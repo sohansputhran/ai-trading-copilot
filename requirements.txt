@@ -1,0 +1,27 @@
+# Core AI & Orchestration
+langchain==0.1.0
+langgraph==0.0.20
+langchain-anthropic==0.1.1
+anthropic==0.18.1
+
+# Data Collection & Analysis
+yfinance==0.2.36
+pandas==2.2.0
+numpy==1.26.3
+
+# Technical Analysis
+pandas-ta==0.3.14b0  # Use this instead of TA-Lib for easier setup
+
+# Frontend
+streamlit==1.30.0
+plotly==5.18.0
+
+# Backend
+python-dotenv==1.0.0
+structlog==24.1.0
+tenacity==8.2.3
+
+# Testing
+pytest==8.0.0
+black==24.1.1
+ruff==0.1.14
