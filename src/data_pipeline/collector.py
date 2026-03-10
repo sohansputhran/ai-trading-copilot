@@ -52,7 +52,7 @@ class MarketDataCollector:
             data = collector.fetch_data("TCS.NS", period="1mo")
         """
         
-        print(f"📥 Fetching data for {symbol}...")
+        print(f"Fetching data for {symbol}...")
         
         # Create ticker object
         ticker = yf.Ticker(symbol)
@@ -64,7 +64,7 @@ class MarketDataCollector:
         if df.empty:
             raise ValueError(f"No data found for {symbol}. Check symbol name.")
         
-        print(f"✅ Fetched {len(df)} rows for {symbol}")
+        print(f"Fetched {len(df)} rows for {symbol}")
         
         return df
     
@@ -112,5 +112,5 @@ if __name__ == "__main__":
     print(f"RELIANCE current price: ₹{price:.2f}")
     
     print("\n" + "="*60)
-    print("✅ Market Data Collector working!")
+    print("Market Data Collector working!")
     print("="*60)
