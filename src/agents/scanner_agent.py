@@ -56,7 +56,7 @@ class MarketScanner:
             max_new_tokens=512  # Max response length
         )
         
-        print("✅ Using FREE HuggingFace model: Mistral-7B-Instruct")
+        print("Using FREE HuggingFace model: Mistral-7B-Instruct")
         
         # Create the analysis prompt
         # Simpler prompt for open-source models
@@ -94,7 +94,7 @@ Analyze:""")
             Dict with analysis if interesting, None otherwise
         """
         try:
-            print(f"\n🔍 Scanning {symbol}...")
+            print(f"\nScanning {symbol}...")
             
             # Step 1: Get price data (3 months for good indicator calculation)
             price_data = self.collector.fetch_data(symbol, period="3mo")
@@ -128,11 +128,11 @@ Analyze:""")
                     'indicators': latest
                 }
             else:
-                print(f"   ⏭️  Not interesting - skipping")
+                print(f"   Not interesting - skipping")
                 return None
                 
         except Exception as e:
-            print(f"   ❌ Error scanning {symbol}: {str(e)}")
+            print(f"   Error scanning {symbol}: {str(e)}")
             return None
     
     def scan(self, symbols: List[str]) -> List[Dict]:
@@ -146,7 +146,7 @@ Analyze:""")
             List of dicts with analysis for interesting stocks
         """
         print("\n" + "="*60)
-        print(f"🚀 Starting market scan for {len(symbols)} stocks")
+        print(f"Starting market scan for {len(symbols)} stocks")
         print("="*60)
         
         results = []
@@ -157,7 +157,7 @@ Analyze:""")
                 results.append(result)
         
         print("\n" + "="*60)
-        print(f"✅ Scan complete! Found {len(results)} interesting stocks")
+        print(f"Scan complete! Found {len(results)} interesting stocks")
         print("="*60)
         
         return results
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     """
     
     print("\n" + "="*60)
-    print("🤖 Market Scanner Agent - Test Run")
+    print("Market Scanner Agent - Test Run")
     print("="*60)
     
     # Create scanner
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     # Display results
     if results:
         print("\n" + "="*60)
-        print("📊 INTERESTING STOCKS FOUND:")
+        print("INTERESTING STOCKS FOUND:")
         print("="*60)
         
         for i, result in enumerate(results, 1):
@@ -217,9 +217,9 @@ if __name__ == "__main__":
                     print(f"   {line}")
             print()
     else:
-        print("\n📭 No interesting stocks found in this scan.")
+        print("\nNo interesting stocks found in this scan.")
         print("   (This is normal - not every stock has clear signals)")
     
     print("\n" + "="*60)
-    print("✅ Scanner test complete!")
+    print("Scanner test complete!")
     print("="*60)
