@@ -1,26 +1,22 @@
 # Data fetching and processing
-yfinance==0.2.33           # Get stock data from Yahoo Finance
-pandas==2.1.4              # Work with data (tables, calculations)
-numpy==1.26.2              # Math operations
-
-# Technical indicators  
-pandas-ta==0.3.14b0        # Calculate RSI, MACD, Bollinger Bands
+yfinance           # Get stock data from Yahoo Finance
+pandas              # Work with data (tables, calculations)
+numpy               # Math operations
 
 # Agent framework
-langchain==0.1.0           # Build the scanner agent
-langchain-huggingface==0.0.1  # Connect to HuggingFace models (FREE!)
-langgraph==0.0.20          # Simple agent workflow     
+langchain           # Build the scanner agent
+langchain-huggingface  # Connect to HuggingFace models (FREE!)
+langgraph          # Simple agent workflow     
+langchain-core
 
 # UI
-streamlit==1.29.0          # Dashboard
-plotly==5.18.0             # Interactive charts         
+streamlit          # Dashboard
+plotly             # Interactive charts         
 
 # Backend
-python-dotenv==1.0.0        # Load .env file (for API key)
-structlog==24.1.0
-tenacity==8.2.3
+python-dotenv        # Load .env file (for API key)
 
 # Testing
-pytest==8.0.0               # Write tests
-black==24.1.1
-ruff==0.1.14
+pytest               # Write tests
+black
+ruff
