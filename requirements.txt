@@ -8,7 +8,7 @@ pandas-ta==0.3.14b0        # Calculate RSI, MACD, Bollinger Bands
 
 # Agent framework
 langchain==0.1.0           # Build the scanner agent
-langchain-anthropic==0.1.0 # Connect to Claude API
+langchain-huggingface==0.0.1  # Connect to HuggingFace models (FREE!)
 langgraph==0.0.20          # Simple agent workflow     
 
 # UI
