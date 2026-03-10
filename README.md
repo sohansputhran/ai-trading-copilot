@@ -1,165 +1,60 @@
-# AI Trading Copilot
+# AI Trading Copilot - Sprint 1
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-latest-green.svg)](https://github.com/langchain-ai/langgraph)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Building an intelligent trading system using AI agents.
 
-> Production-grade AI trading copilot using LangGraph multi-agent orchestration. Features real-time market scanning, explainable AI decision-making, and algorithmic risk management.
+## Sprint 1 Goal
+Build market data pipeline and basic scanner agent.
 
-## 🎯 Project Overview
+## What We're Building This Sprint
+1. ✅ Market data collector (fetch stock prices)
+2. ⏳ Technical indicators (RSI, MACD, etc.)
+3. ⏳ Scanner agent (find trading opportunities)
+4. ⏳ Streamlit dashboard (show results)
 
-An intelligent trading system that combines:
-- **Multi-Agent AI** - LangGraph orchestration with specialized agents
-- **Real-time Analysis** - Market scanning with technical indicators
-- **Risk Management** - Algorithmic position sizing and validation
-- **Explainable AI** - Human-readable reasoning for every decision
+## Setup
 
-Built as a portfolio project to showcase AI Engineering expertise.
-
-## 🏗️ Architecture
-```
-Streamlit Dashboard
-    ↓
-LangGraph Multi-Agent System
-    - Market Scanner Agent
-    - Strategy Analyzer Agent  
-    - Risk Manager Agent
-    ↓
-Data & Execution Layer
-    - Market Data Pipeline
-    - Upstox Broker API
-    - Trade Journal (PostgreSQL)
-```
-
-## ✨ Features
-
-- 🔍 **Intelligent Market Scanning** - Finds high-potential stocks using technical analysis
-- 🤖 **Multi-Agent Decision System** - Coordinated AI agents with specialized strategies
-- 🛡️ **Risk Management** - Kelly Criterion position sizing and pre-trade validation
-- 📊 **Real-time Dashboard** - Professional Streamlit interface with live updates
-- 📝 **Automated Journaling** - Every trade logged with reasoning and metrics
-- 🎯 **Explainable AI** - Clear explanations for every trading decision
-
-## 🛠️ Tech Stack
-
-**Core:**
-- Python 3.11+
-- LangGraph (Multi-agent orchestration)
-- LangChain (Agent tools)
-- Claude (Anthropic LLM)
-
-**Data & Analysis:**
-- pandas, numpy (Data processing)
-- TA-Lib (Technical indicators)
-- yfinance (Market data)
-
-**Backend:**
-- FastAPI (REST API)
-- PostgreSQL (Trade journal)
-- Redis (Caching - optional)
-
-**Frontend:**
-- Streamlit (Dashboard)
-- Plotly (Charts)
-
-**DevOps:**
-- Docker & docker-compose
-- GitHub Actions (CI/CD)
-- pytest (Testing)
-
-## 🚀 Quick Start
-
-### Prerequisites
+### 1. Install Dependencies
 ```bash
-- Python 3.11+
-- pip or Poetry
-- Git
-```
-
-### Installation
-```bash
-# Clone repository
-git clone https://github.com/yourusername/ai-trading-copilot.git
-cd ai-trading-copilot
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env and add your API keys
 ```
 
-### Run the Dashboard
+### 2. Create .env File
 ```bash
-streamlit run streamlit_app/app.py
+cp .env.example .env
 ```
 
-Open http://localhost:8501 in your browser.
+Edit `.env` and add your Anthropic API key:
+```
+ANTHROPIC_API_KEY=sk-ant-...
+```
 
-## 📚 Project Structure
+Get your key from: https://console.anthropic.com/
+
+### 3. Test Market Data Collector
+```bash
+python -m src.data_pipeline.collector
+```
+
+You should see Reliance stock data fetched successfully.
+
+## Project Structure (Sprint 1)
 ```
 ai-trading-copilot/
 ├── src/
-│   ├── agents/              # LangGraph agents
-│   ├── data_pipeline/       # Market data collection
-│   ├── risk_management/     # Position sizing & validation
-│   ├── execution/           # Order management
-│   ├── journal/             # Trade logging & analytics
-│   └── utils/               # Shared utilities
-├── streamlit_app/           # Dashboard UI
-├── configs/                 # Configuration files
-├── tests/                   # Unit & integration tests
-├── docs/                    # Documentation
-└── notebooks/               # Learning notebooks
+│   ├── utils/
+│   │   └── config.py          # Loads API key from .env
+│   └── data_pipeline/
+│       └── collector.py       # Fetches stock data
+├── requirements.txt           # Python packages
+├── .env.example              # Template for API keys
+└── README.md                 # This file
 ```
 
-## 🎓 Learning Journey
-
-This project was built as a 12-week learning journey through:
-1. Real-time data engineering
-2. LangGraph multi-agent orchestration
-3. Algorithmic risk management
-4. Production system design
-
-See [PROJECT_MASTER.md](docs/PROJECT_MASTER.md) for the complete roadmap.
-
-## 📊 Current Status
-
-**Sprint 1: Market Data Pipeline & Scanner Agent** ✅ (In Progress)
-- [x] Project setup and architecture
-- [ ] Market data collector
-- [ ] Technical indicator engine
-- [ ] Scanner agent
-- [ ] Streamlit dashboard
-
-## 🤝 Contributing
-
-This is a portfolio/learning project, but suggestions and feedback are welcome!
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built with [LangGraph](https://github.com/langchain-ai/langgraph)
-- Market data from [Yahoo Finance](https://finance.yahoo.com/)
-- Inspired by quantitative trading and AI agent research
-
-## 📧 Contact
-
-**Sohan** - AI Engineering Portfolio Project
-
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your LinkedIn](https://linkedin.com/in/yourprofile)
-- Portfolio: [Your Website](https://yourwebsite.com)
+## Next Steps
+1. Add technical indicators (RSI, MACD)
+2. Build scanner agent with LangGraph
+3. Create Streamlit dashboard
 
 ---
 
-⭐ Star this repo if you find it interesting!
+**Current Status**: Setting up foundation ✅

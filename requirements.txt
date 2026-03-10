@@ -1,27 +1,26 @@
-# Core AI & Orchestration
-langchain==0.1.0
-langgraph==0.0.20
-langchain-anthropic==0.1.1
-anthropic==0.18.1
+# Data fetching and processing
+yfinance==0.2.33           # Get stock data from Yahoo Finance
+pandas==2.1.4              # Work with data (tables, calculations)
+numpy==1.26.2              # Math operations
 
-# Data Collection & Analysis
-yfinance==0.2.36
-pandas==2.2.0
-numpy==1.26.3
+# Technical indicators  
+pandas-ta==0.3.14b0        # Calculate RSI, MACD, Bollinger Bands
 
-# Technical Analysis
-pandas-ta==0.3.14b0  # Use this instead of TA-Lib for easier setup
+# Agent framework
+langchain==0.1.0           # Build the scanner agent
+langchain-anthropic==0.1.0 # Connect to Claude API
+langgraph==0.0.20          # Simple agent workflow     
 
-# Frontend
-streamlit==1.30.0
-plotly==5.18.0
+# UI
+streamlit==1.29.0          # Dashboard
+plotly==5.18.0             # Interactive charts         
 
 # Backend
-python-dotenv==1.0.0
+python-dotenv==1.0.0        # Load .env file (for API key)
 structlog==24.1.0
 tenacity==8.2.3
 
 # Testing
-pytest==8.0.0
+pytest==8.0.0               # Write tests
 black==24.1.1
 ruff==0.1.14
