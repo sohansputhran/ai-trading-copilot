@@ -83,101 +83,153 @@ if scan_button:
         progress_bar.empty()
         status_text.empty()
         
-        # Display results
-        st.success(f"Scan complete! Found {len(results)} interesting stocks")
+        # Separate results into interesting and not interesting
+        interesting_stocks = [r for r in results if r.get('interesting', False)]
+        not_interesting_stocks = [r for r in results if not r.get('interesting', False)]
         
-        if results:
-            st.subheader("Interesting Stocks Found")
+        # Display summary
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Scanned", len(results))
+        with col2:
+            st.metric("Interesting", len(interesting_stocks))
+        with col3:
+            st.metric("Not Interesting", len(not_interesting_stocks))
+        
+        # Create tabs for interesting vs not interesting
+        tab1, tab2 = st.tabs(["Interesting Stocks", "Not Interesting"])
+        
+        with tab1:
+            if interesting_stocks:
+                st.subheader(f"{len(interesting_stocks)} Stocks with Clear Signals")
+                
+                for i, result in enumerate(interesting_stocks, 1):
+                    with st.expander(f"**{i}. {result['symbol']}** - ₹{result['price']:.2f}", expanded=(i==1)):
+                        
+                        # Create two columns
+                        col1, col2 = st.columns([1, 1])
+                        
+                        with col1:
+                            st.markdown("### Indicators")
+                            
+                            # Show indicators in a nice format
+                            indicators = result['indicators']
+                            
+                            # RSI with color
+                            rsi_val = indicators['rsi']
+                            if rsi_val < 30:
+                                rsi_color = "🟢"  # Oversold
+                                rsi_label = "Oversold"
+                            elif rsi_val > 70:
+                                rsi_color = "🔴"  # Overbought
+                                rsi_label = "Overbought"
+                            else:
+                                rsi_color = "🟡"  # Neutral
+                                rsi_label = "Neutral"
+                            
+                            st.metric("RSI", f"{rsi_val:.2f}", f"{rsi_color} {rsi_label}")
+                            
+                            # Other indicators
+                            st.metric("MACD", f"{indicators['macd']:.2f}")
+                            st.metric("Volume Ratio", f"{indicators['volume_ratio']:.2f}x")
+                        
+                        with col2:
+                            st.markdown("### AI Analysis")
+                            st.success(result['analysis'])
+                        
+                        # Add a chart
+                        st.markdown("### Price Chart (Last 3 Months)")
+                        
+                        # Fetch data for chart
+                        collector = MarketDataCollector()
+                        calc = SimpleTechnicalIndicators()
+                        
+                        try:
+                            price_data = collector.fetch_data(result['symbol'], period="3mo")
+                            data_with_ind = calc.calculate_all(price_data)
+                            
+                            # Create candlestick chart
+                            fig = go.Figure()
+                            
+                            # Add candlestick
+                            fig.add_trace(go.Candlestick(
+                                x=data_with_ind.index,
+                                open=data_with_ind['Open'],
+                                high=data_with_ind['High'],
+                                low=data_with_ind['Low'],
+                                close=data_with_ind['Close'],
+                                name='Price'
+                            ))
+                            
+                            # Add Bollinger Bands
+                            fig.add_trace(go.Scatter(
+                                x=data_with_ind.index,
+                                y=data_with_ind['BB_Upper'],
+                                name='BB Upper',
+                                line=dict(dash='dash', color='gray')
+                            ))
+                            
+                            fig.add_trace(go.Scatter(
+                                x=data_with_ind.index,
+                                y=data_with_ind['BB_Lower'],
+                                name='BB Lower',
+                                line=dict(dash='dash', color='gray'),
+                                fill='tonexty'
+                            ))
+                            
+                            fig.update_layout(
+                                height=400,
+                                xaxis_title="Date",
+                                yaxis_title="Price (₹)",
+                                hovermode='x unified'
+                            )
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                            
+                        except Exception as e:
+                            st.warning(f"Could not load chart: {str(e)}")
             
-            # Show each result
-            for i, result in enumerate(results, 1):
-                with st.expander(f"**{i}. {result['symbol']}** - {result['price']:.2f}", expanded=True):
-                    
-                    # Create two columns
-                    col1, col2 = st.columns([1, 1])
-                    
-                    with col1:
-                        st.markdown("### Indicators")
-                        
-                        # Show indicators in a nice format
-                        indicators = result['indicators']
-                        
-                        # RSI with color
-                        rsi_val = indicators['rsi']
-                        if rsi_val < 30:
-                            rsi_color = "🟢"  # Oversold
-                            rsi_label = "Oversold"
-                        elif rsi_val > 70:
-                            rsi_color = "🔴"  # Overbought
-                            rsi_label = "Overbought"
-                        else:
-                            rsi_color = "🟡"  # Neutral
-                            rsi_label = "Neutral"
-                        
-                        st.metric("RSI", f"{rsi_val:.2f}", f"{rsi_color} {rsi_label}")
-                        
-                        # Other indicators
-                        st.metric("MACD", f"{indicators['macd']:.2f}")
-                        st.metric("Volume Ratio", f"{indicators['volume_ratio']:.2f}x")
-                    
-                    with col2:
-                        st.markdown("### AI Analysis")
-                        st.info(result['analysis'])
-                    
-                    # Add a chart
-                    st.markdown("### Price Chart (Last 3 Months)")
-                    
-                    # Fetch data for chart
-                    collector = MarketDataCollector()
-                    calc = SimpleTechnicalIndicators()
-                    
-                    try:
-                        price_data = collector.fetch_data(result['symbol'], period="3mo")
-                        data_with_ind = calc.calculate_all(price_data)
-                        
-                        # Create candlestick chart
-                        fig = go.Figure()
-                        
-                        # Add candlestick
-                        fig.add_trace(go.Candlestick(
-                            x=data_with_ind.index,
-                            open=data_with_ind['Open'],
-                            high=data_with_ind['High'],
-                            low=data_with_ind['Low'],
-                            close=data_with_ind['Close'],
-                            name='Price'
-                        ))
-                        
-                        # Add Bollinger Bands
-                        fig.add_trace(go.Scatter(
-                            x=data_with_ind.index,
-                            y=data_with_ind['BB_Upper'],
-                            name='BB Upper',
-                            line=dict(dash='dash', color='gray')
-                        ))
-                        
-                        fig.add_trace(go.Scatter(
-                            x=data_with_ind.index,
-                            y=data_with_ind['BB_Lower'],
-                            name='BB Lower',
-                            line=dict(dash='dash', color='gray'),
-                            fill='tonexty'
-                        ))
-                        
-                        fig.update_layout(
-                            height=400,
-                            xaxis_title="Date",
-                            yaxis_title="Price (₹)",
-                            hovermode='x unified'
-                        )
-                        
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                    except Exception as e:
-                        st.warning(f"Could not load chart: {str(e)}")
+            else:
+                st.info("No stocks with clear signals found.")
         
-        else:
-            st.info("No stocks matched the criteria. Try scanning more stocks or check back later!")
+        with tab2:
+            if not_interesting_stocks:
+                st.subheader(f"{len(not_interesting_stocks)} Stocks Without Clear Signals")
+                st.caption("These stocks don't show strong technical patterns right now")
+                
+                for i, result in enumerate(not_interesting_stocks, 1):
+                    with st.expander(f"**{i}. {result['symbol']}** - ₹{result['price']:.2f}"):
+                        
+                        # Create two columns
+                        col1, col2 = st.columns([1, 1])
+                        
+                        with col1:
+                            st.markdown("### Indicators")
+                            
+                            indicators = result['indicators']
+                            
+                            # RSI with color
+                            rsi_val = indicators['rsi']
+                            if rsi_val < 30:
+                                rsi_color = "🟢"
+                                rsi_label = "Oversold"
+                            elif rsi_val > 70:
+                                rsi_color = "🔴"
+                                rsi_label = "Overbought"
+                            else:
+                                rsi_color = "🟡"
+                                rsi_label = "Neutral"
+                            
+                            st.metric("RSI", f"{rsi_val:.2f}", f"{rsi_color} {rsi_label}")
+                            st.metric("MACD", f"{indicators['macd']:.2f}")
+                            st.metric("Volume Ratio", f"{indicators['volume_ratio']:.2f}x")
+                        
+                        with col2:
+                            st.markdown("### AI Analysis")
+                            st.info(result['analysis'])
+            
+            else:
+                st.success("All stocks showed interesting signals!")
 
 else:
     # Welcome message

@@ -119,17 +119,22 @@ Analyze:""")
             analysis = response
             
             # Check if the model found it interesting
-            if "INTERESTING: Yes" in analysis.upper() or "INTERESTING:Yes" in analysis.upper():
-                return {
-                    'symbol': symbol,
-                    'price': latest['price'],
-                    'rsi': latest['rsi'],
-                    'analysis': analysis,
-                    'indicators': latest
-                }
+            is_interesting = "INTERESTING: Yes" in analysis.upper() or "INTERESTING:Yes" in analysis.upper()
+            
+            # Always return result with reasoning
+            return {
+                'symbol': symbol,
+                'price': latest['price'],
+                'rsi': latest['rsi'],
+                'analysis': analysis,
+                'indicators': latest,
+                'interesting': is_interesting  # Flag to indicate if picked
+            }
+            
+            if is_interesting:
+                print(f"   Interesting!")
             else:
-                print(f"   Not interesting - skipping")
-                return None
+                print(f"   Not interesting")
                 
         except Exception as e:
             print(f"   Error scanning {symbol}: {str(e)}")
@@ -137,13 +142,13 @@ Analyze:""")
     
     def scan(self, symbols: List[str]) -> List[Dict]:
         """
-        Scan multiple stocks and return interesting ones.
+        Scan multiple stocks and return ALL results with reasons.
         
         Args:
             symbols: List of stock symbols
             
         Returns:
-            List of dicts with analysis for interesting stocks
+            List of dicts with analysis for ALL stocks
         """
         print("\n" + "="*60)
         print(f"Starting market scan for {len(symbols)} stocks")
@@ -153,11 +158,13 @@ Analyze:""")
         
         for symbol in symbols:
             result = self.scan_stock(symbol)
-            if result:
+            if result:  # Will always be True now (we return all results)
                 results.append(result)
         
+        interesting_count = sum(1 for r in results if r.get('interesting', False))
+        
         print("\n" + "="*60)
-        print(f"Scan complete! Found {len(results)} interesting stocks")
+        print(f"Scan complete! {interesting_count} interesting, {len(results) - interesting_count} not interesting")
         print("="*60)
         
         return results
