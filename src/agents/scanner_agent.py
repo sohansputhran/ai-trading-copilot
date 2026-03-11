@@ -48,15 +48,32 @@ class MarketScanner:
         self.indicators = SimpleTechnicalIndicators()
         
         # Initialize HuggingFace LLM (FREE!)
-        # Using Mistral-7B-Instruct - good for analysis, completely free
-        self.llm = HuggingFaceEndpoint(
-            repo_id="mistralai/Mistral-7B-Instruct-v0.2",  # Free, open-source model
-            huggingfacehub_api_token=HUGGINGFACE_API_TOKEN,
-            temperature=0.3,  # Lower = more focused
-            max_new_tokens=512  # Max response length
-        )
+        # Try multiple models in case one is unavailable
+        models_to_try = [
+            ("meta-llama/Meta-Llama-3-8B-Instruct", "Llama-3-8B"),
+            ("google/flan-t5-large", "Flan-T5-Large"),
+            ("HuggingFaceH4/zephyr-7b-beta", "Zephyr-7B")
+        ]
         
-        print("Using FREE HuggingFace model: Mistral-7B-Instruct")
+        self.llm = None
+        for repo_id, model_name in models_to_try:
+            try:
+                print(f"⏳ Trying to load {model_name}...")
+                self.llm = HuggingFaceEndpoint(
+                    repo_id=repo_id,
+                    huggingfacehub_api_token=HUGGINGFACE_API_TOKEN,
+                    temperature=0.3,
+                    max_new_tokens=512,
+                    task="text-generation"
+                )
+                print(f"✅ Successfully loaded FREE model: {model_name}")
+                break
+            except Exception as e:
+                print(f"{model_name} unavailable: {str(e)}")
+                continue
+        
+        if not self.llm:
+            raise ValueError("Could not load any HuggingFace model. Please check your token.")
         
         # Create the analysis prompt
         # Simpler prompt for open-source models

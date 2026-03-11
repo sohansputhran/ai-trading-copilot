@@ -20,9 +20,17 @@ sys.path.insert(0, str(project_root))
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from src.agents.scanner_agent import MarketScanner, NIFTY_50_SAMPLE
+
+# Try to import AI scanner, fallback to rule-based
+try:
+    from src.agents.scanner_agent import MarketScanner, NIFTY_50_SAMPLE
+    SCANNER_TYPE = "AI"
+except Exception as e:
+    from src.agents.rule_based_scanner import RuleBasedScanner as MarketScanner, NIFTY_50_SAMPLE
+    SCANNER_TYPE = "Rule-Based"
+    
 from src.data_pipeline.collector import MarketDataCollector
-from src.data_pipeline.indicators import SimpleTechnicalIndicators
+from src.data_pipeline.indicators_simple import SimpleTechnicalIndicators
 
 # Page config
 st.set_page_config(
@@ -32,7 +40,10 @@ st.set_page_config(
 
 # Title
 st.title("AI Trading Scanner")
-st.markdown("*Powered by free HuggingFace AI (Mistral-7B)*")
+if SCANNER_TYPE == "AI":
+    st.markdown("*Powered by free HuggingFace AI*")
+else:
+    st.markdown("*Using rule-based analysis (no AI needed)*")
 
 # Sidebar - Input
 st.sidebar.header("Scanner Settings")
