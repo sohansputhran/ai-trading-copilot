@@ -1,27 +1,22 @@
-# Core AI & Orchestration
-langchain==0.1.0
-langgraph==0.0.20
-langchain-anthropic==0.1.1
-anthropic==0.18.1
+# Data fetching and processing
+yfinance           # Get stock data from Yahoo Finance
+pandas              # Work with data (tables, calculations)
+numpy               # Math operations
 
-# Data Collection & Analysis
-yfinance==0.2.36
-pandas==2.2.0
-numpy==1.26.3
+# Agent framework
+langchain           # Build the scanner agent
+langchain-huggingface  # Connect to HuggingFace models (FREE!)
+langgraph          # Simple agent workflow     
+langchain-core
 
-# Technical Analysis
-pandas-ta==0.3.14b0  # Use this instead of TA-Lib for easier setup
-
-# Frontend
-streamlit==1.30.0
-plotly==5.18.0
+# UI
+streamlit          # Dashboard
+plotly             # Interactive charts         
 
 # Backend
-python-dotenv==1.0.0
-structlog==24.1.0
-tenacity==8.2.3
+python-dotenv        # Load .env file (for API key)
 
 # Testing
-pytest==8.0.0
-black==24.1.1
-ruff==0.1.14
+pytest               # Write tests
+black
+ruff
