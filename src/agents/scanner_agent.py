@@ -133,10 +133,14 @@ class MarketScanner:
                 
                 # Pre-compute whether ANY trigger condition is met
                 triggers = []
-                if rsi < 30:             triggers.append(f"RSI={rsi:.1f} is OVERSOLD (<30)")
-                if rsi > 70:             triggers.append(f"RSI={rsi:.1f} is OVERBOUGHT (>70)")
-                if vol > 2.0 and 40 < rsi < 60:  triggers.append(f"Volume={vol:.1f}x is HIGH with neutral RSI")
-                if macd > 5.0 and 45 < rsi < 65:  triggers.append(f"MACD={macd:.1f} is STRONG with healthy RSI")
+                if rsi < 30:            
+                     triggers.append(f"RSI={rsi:.1f} is OVERSOLD (<30)")
+                if rsi > 70:            
+                     triggers.append(f"RSI={rsi:.1f} is OVERBOUGHT (>70)")
+                if vol > 2.0 and 40 < rsi < 60: 
+                     triggers.append(f"Volume={vol:.1f}x is HIGH with neutral RSI")
+                if macd > 5.0 and 45 < rsi < 65:  
+                    triggers.append(f"MACD={macd:.1f} is STRONG with healthy RSI")
                 hint = f"Pre-analysis: {', '.join(triggers) if triggers else 'NO trigger conditions met — likely Neutral'}."
                 
                 user_message = (
@@ -200,7 +204,7 @@ class MarketScanner:
         # Rule 1: Oversold reversal
         if rsi < 30 and macd > 0:
             return True, f"""INTERESTING: Yes
-SIGNAL: Oversold Reversal  
+SIGNAL: Oversold Reversal
 REASON: RSI {rsi:.1f} (oversold) + positive MACD {macd:.2f} suggests potential bounce."""
         
         # Rule 2: Extreme oversold
@@ -306,7 +310,7 @@ if __name__ == "__main__":
         
         for i, result in enumerate(results, 1):
             print(f"\n{i}. {result['symbol']}")
-            print(f"   Price: ₹{result['price']:.2f}")
+            print(f"   Price: {result['price']:.2f}")
             print(f"   RSI: {result['rsi']:.2f}")
             print("\n   AI Analysis:")
             print("   " + "-"*56)

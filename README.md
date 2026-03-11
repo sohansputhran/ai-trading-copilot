@@ -1,8 +1,8 @@
-# 🤖 AI Trading Copilot - Sprint 1
+# 🤖 AI Trading Copilot
 
 An intelligent trading system that uses **free AI** to scan stocks and identify trading opportunities.
 
-> **100% Free** - No API costs, uses open-source HuggingFace models
+> **100% Free** - No API costs, uses open-source HuggingFace models (Llama-3-8B)
 
 ---
 
@@ -11,13 +11,14 @@ An intelligent trading system that uses **free AI** to scan stocks and identify 
 Scans stocks and uses AI to find potential trading opportunities based on technical indicators:
 
 - 📊 **Calculates indicators** - RSI, MACD, Bollinger Bands, Volume
-- 🤖 **AI analysis** - Mistral-7B explains why stocks are interesting
-- 📈 **Visual dashboard** - Beautiful Streamlit interface with charts
+- 🤖 **AI analysis** - Meta Llama-3-8B classifies signals and explains why a stock is interesting
+- 📈 **Visual dashboard** - Streamlit interface with interactive candlestick charts
+- 🔍 **Smart filtering** - Only flags stocks that meet strict technical signal criteria
 
 **Example output:**
 ```
 Found: RELIANCE.NS
-Price: ₹2,847.50
+Price: 2,847.50
 RSI: 31.24 (Oversold)
 
 AI Analysis:
@@ -28,11 +29,13 @@ REASON: RSI at 28 indicates oversold condition with volume increase.
 
 ---
 
-## ✨ Features (Sprint 1)
+## ✨ Features
 
 - ✅ **Market data collection** - Fetches stock prices from Yahoo Finance
 - ✅ **Technical indicators** - RSI, MACD, Bollinger Bands (manual calculation)
-- ✅ **AI Scanner Agent** - Uses free HuggingFace Mistral-7B model
+- ✅ **AI Scanner Agent** - Uses free HuggingFace Llama-3-8B model via `InferenceClient`
+- ✅ **Strict classification** - Pre-computed trigger hints prevent AI from over-flagging
+- ✅ **Rule-based fallback** - Works even if AI model is unavailable
 - ✅ **Streamlit Dashboard** - Professional UI with interactive charts
 - ✅ **100% Free** - No API costs
 
@@ -41,7 +44,7 @@ REASON: RSI at 28 indicates oversold condition with volume increase.
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.11+ (you have 3.11.9 ✅)
+- Python 3.11+
 - pip
 - Free HuggingFace account
 
@@ -58,11 +61,10 @@ cd ai-trading-copilot
 pip install -r requirements.txt
 ```
 
-**3. Get your free HuggingFace token**
-- Go to: https://huggingface.co/join
-- Sign up (free, no credit card)
-- Go to: https://huggingface.co/settings/tokens
-- Create a new **Read** token
+**3. Get your free HuggingFace token & model access**
+- Go to: https://huggingface.co/join and sign up (free)
+- Go to: https://huggingface.co/settings/tokens → create a **Read** token
+- Visit: https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct and **accept the license** to unlock the model
 - Copy the token (starts with `hf_...`)
 
 **4. Set up environment**
@@ -177,19 +179,36 @@ python src/agents/scanner_agent.py
 
 ## 🤖 AI Model
 
-**Using:** Mistral-7B-Instruct-v0.2
+**Primary model:** `meta-llama/Meta-Llama-3-8B-Instruct`
+
+**Fallback chain (tried in order if primary fails):**
+1. `mistralai/Mistral-7B-Instruct-v0.3`
+2. `microsoft/Phi-3-mini-4k-instruct`
+3. `HuggingFaceH4/zephyr-7b-beta`
+
+> **Note:** Llama-3-8B is a **gated model** — you must accept Meta's license on HuggingFace before your token can access it. See setup step 3 above.
 
 **Why this model?**
-- ✅ 100% Free (no API costs)
+- ✅ 100% free (no API costs)
 - ✅ Open-source
-- ✅ Good at technical analysis
-- ✅ Fast responses
-- ✅ No rate limits
+- ✅ Strong instruction-following for structured output
+- ✅ Accessed via `huggingface_hub.InferenceClient` (compatible with HuggingFace's new `router.huggingface.co` API)
+
+**How classification works:**
+
+The scanner uses a two-step approach to avoid over-flagging:
+
+1. **Pre-check:** Before calling the AI, it computes which trigger conditions are met:
+   - RSI < 30 → Oversold
+   - RSI > 70 → Overbought
+   - Volume > 2x AND RSI 40–60 → Breakout
+   - MACD > 5.0 AND RSI 45–65 → Bullish momentum
+2. **AI call:** The model receives the indicators + a plain-English hint (e.g., `"NO trigger conditions met — likely Neutral"`) and a strict system prompt that says ~70–80% of stocks should be `INTERESTING: No`.
 
 **Trade-off vs paid models (like Claude):**
 - Simpler reasoning
 - Less nuanced analysis
-- But totally free and works well!
+- But totally free and works well for signal-based screening!
 
 ---
 
@@ -232,6 +251,15 @@ python src/agents/scanner_agent.py
 - Not as sophisticated as paid models
 - Use as one input, not sole decision maker
 
+### 🔧 Troubleshooting: AI not working?
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `AI failed, falling back to rule-based` | Model access not granted | Accept the Llama-3 license at [huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct) |
+| `model_not_supported` error | Old `HuggingFaceEndpoint` code | Ensure you're using the latest `scanner_agent.py` with `InferenceClient` |
+| Token error | Invalid or expired token | Regenerate at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) |
+| All stocks show as Interesting | Weak prompt / no pre-check | Ensure latest `scanner_agent.py` with trigger hint logic |
+
 ---
 
 ## 🛠️ Tech Stack
@@ -244,9 +272,9 @@ python src/agents/scanner_agent.py
 - numpy (math operations)
 
 **AI:**
-- LangChain (agent framework)
-- HuggingFace (free AI models)
-- Mistral-7B (language model)
+- `huggingface_hub` — `InferenceClient` for accessing models via HuggingFace's router API
+- Meta Llama-3-8B-Instruct (primary language model)
+- Rule-based fallback engine (no AI dependency)
 
 **UI:**
 - Streamlit (dashboard)
@@ -291,10 +319,10 @@ MIT License - Feel free to use for learning!
 
 ## 🙏 Acknowledgments
 
-- **HuggingFace** - Free AI models
+- **HuggingFace** - Free AI model hosting
 - **Yahoo Finance** - Free market data
 - **Streamlit** - Amazing dashboard framework
-- **Mistral AI** - Open-source Mistral-7B model
+- **Meta AI** - Open-source Llama-3-8B model
 
 ---
 

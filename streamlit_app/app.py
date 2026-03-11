@@ -146,7 +146,7 @@ if scan_button:
                         
                         with col2:
                             st.markdown("### AI Analysis")
-                            st.success(result['analysis'])
+                            st.success(result['analysis'].replace('\n', '\n\n'))
                         
                         # Add a chart
                         st.markdown("### Price Chart (Last 3 Months)")
@@ -237,7 +237,7 @@ if scan_button:
                         
                         with col2:
                             st.markdown("### AI Analysis")
-                            st.info(result['analysis'])
+                            st.info(result['analysis'].replace('\n', '\n\n'))
             
             else:
                 st.success("All stocks showed interesting signals!")
