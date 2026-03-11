@@ -1,6 +1,12 @@
 # 🤖 AI Trading Copilot
 
-An intelligent trading system that uses **free AI** to scan stocks and identify trading opportunities.
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-latest-green.svg)](https://github.com/langchain-ai/langgraph)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> An intelligent trading system that uses **free AI** to scan stocks and identify trading opportunities.
+
 
 > **100% Free** - No API costs, uses open-source HuggingFace models (Llama-3-8B)
 
