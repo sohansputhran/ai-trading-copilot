@@ -84,15 +84,20 @@ class MarketScanner:
         if not self.llm_client:
             print("⚠️  No AI model available — will use rule-based fallback for all scans.")
         
-        # System prompt for analysis
+        # System prompt - strict about when NOT to flag as interesting
         self.system_prompt = (
-            "You are a technical stock analyst. Analyze indicators and identify trading opportunities. "
-            "Look for: RSI < 30 = Oversold (potential buy), RSI > 70 = Overbought (potential sell), "
-            "MACD positive + RSI mid-range = Bullish, Volume > 2x average = Strong interest. "
-            "Format your response EXACTLY like this (3 lines only):\n"
+            "You are a strict technical stock screener. Your job is to filter OUT most stocks. "
+            "Only mark a stock as INTERESTING if it meets AT LEAST ONE of these exact conditions:\n"
+            "  - RSI below 30 (oversold)\n"
+            "  - RSI above 70 (overbought)\n"
+            "  - Volume ratio above 2.0x AND RSI between 40-60\n"
+            "  - MACD above 5.0 AND RSI between 45-65\n"
+            "If NONE of these conditions are met, you MUST say INTERESTING: No. "
+            "Most stocks (around 70-80%) should be NOT interesting. Be strict and conservative. "
+            "Format your response EXACTLY like this (3 lines, nothing else):\n"
             "INTERESTING: Yes or No\n"
-            "SIGNAL: (one word: Oversold, Overbought, Breakout, or Neutral)\n"
-            "REASON: (one sentence explaining why)"
+            "SIGNAL: Oversold, Overbought, Breakout, Bullish, or Neutral\n"
+            "REASON: one sentence with the specific indicator values that support your decision"
         )
     
     def scan_stock(self, symbol: str) -> Optional[Dict]:
@@ -122,13 +127,26 @@ class MarketScanner:
                 if not self.llm_client:
                     raise RuntimeError("No AI client available")
                 
+                rsi = latest['rsi']
+                macd = latest['macd']
+                vol = latest['volume_ratio']
+                
+                # Pre-compute whether ANY trigger condition is met
+                triggers = []
+                if rsi < 30:             triggers.append(f"RSI={rsi:.1f} is OVERSOLD (<30)")
+                if rsi > 70:             triggers.append(f"RSI={rsi:.1f} is OVERBOUGHT (>70)")
+                if vol > 2.0 and 40 < rsi < 60:  triggers.append(f"Volume={vol:.1f}x is HIGH with neutral RSI")
+                if macd > 5.0 and 45 < rsi < 65:  triggers.append(f"MACD={macd:.1f} is STRONG with healthy RSI")
+                hint = f"Pre-analysis: {', '.join(triggers) if triggers else 'NO trigger conditions met — likely Neutral'}."
+                
                 user_message = (
                     f"Stock: {symbol}\n"
                     f"Price: {latest['price']:.2f}\n"
-                    f"RSI: {latest['rsi']:.2f}\n"
-                    f"MACD: {latest['macd']:.2f}\n"
-                    f"Volume Ratio: {latest['volume_ratio']:.2f}x\n\n"
-                    f"Analyze this stock and respond in the exact 3-line format."
+                    f"RSI: {rsi:.2f}\n"
+                    f"MACD: {macd:.2f}\n"
+                    f"Volume Ratio: {vol:.2f}x\n"
+                    f"{hint}\n\n"
+                    f"Based on the criteria above, is this stock interesting?"
                 )
                 
                 response = self.llm_client.chat_completion(
