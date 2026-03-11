@@ -30,7 +30,7 @@ except Exception as e:
     SCANNER_TYPE = "Rule-Based"
     
 from src.data_pipeline.collector import MarketDataCollector
-from src.data_pipeline.indicators_simple import SimpleTechnicalIndicators
+from src.data_pipeline.indicators import SimpleTechnicalIndicators
 
 # Page config
 st.set_page_config(
@@ -195,7 +195,7 @@ if scan_button:
                                 hovermode='x unified'
                             )
                             
-                            st.plotly_chart(fig, use_container_width=True)
+                            st.plotly_chart(fig, width="stretch")
                             
                         except Exception as e:
                             st.warning(f"Could not load chart: {str(e)}")

@@ -26,12 +26,11 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from typing import List, Dict
+from typing import List, Dict, Optional, Tuple
 from src.data_pipeline.collector import MarketDataCollector
 from src.data_pipeline.indicators import SimpleTechnicalIndicators
 from src.utils.config import HUGGINGFACE_API_TOKEN
-from langchain_huggingface import HuggingFaceEndpoint
-from langchain_core.prompts import ChatPromptTemplate
+from huggingface_hub import InferenceClient
 
 
 class MarketScanner:
@@ -47,60 +46,56 @@ class MarketScanner:
         self.collector = MarketDataCollector()
         self.indicators = SimpleTechnicalIndicators()
         
-        # Initialize HuggingFace LLM (FREE!)
+        # Initialize HuggingFace InferenceClient (FREE!)
+        # Uses the new router.huggingface.co API via chat_completion()
         # Try multiple models in case one is unavailable
         models_to_try = [
-            ("meta-llama/Meta-Llama-3-8B-Instruct", "Llama-3-8B"),
-            ("google/flan-t5-large", "Flan-T5-Large"),
-            ("HuggingFaceH4/zephyr-7b-beta", "Zephyr-7B")
+            ("meta-llama/Meta-Llama-3-8B-Instruct", "Llama-3-8B"),      # Confirmed working
+            ("mistralai/Mistral-7B-Instruct-v0.3", "Mistral-7B"),
+            ("microsoft/Phi-3-mini-4k-instruct", "Phi-3-mini"),
+            ("HuggingFaceH4/zephyr-7b-beta", "Zephyr-7B"),
         ]
         
-        self.llm = None
+        self.llm_model = None
+        self.llm_client = None
+        
         for repo_id, model_name in models_to_try:
             try:
                 print(f"⏳ Trying to load {model_name}...")
-                self.llm = HuggingFaceEndpoint(
-                    repo_id=repo_id,
-                    huggingfacehub_api_token=HUGGINGFACE_API_TOKEN,
-                    temperature=0.3,
-                    max_new_tokens=512,
-                    task="text-generation"
+                client = InferenceClient(
+                    model=repo_id,
+                    token=HUGGINGFACE_API_TOKEN,
+                    timeout=30
                 )
-                print(f"✅ Successfully loaded FREE model: {model_name}")
+                # Quick connectivity test
+                test_resp = client.chat_completion(
+                    messages=[{"role": "user", "content": "Reply with just: OK"}],
+                    max_tokens=5
+                )
+                _ = test_resp.choices[0].message.content
+                self.llm_client = client
+                self.llm_model = model_name
+                print(f"✅ Successfully connected to FREE model: {model_name}")
                 break
             except Exception as e:
-                print(f"{model_name} unavailable: {str(e)}")
+                print(f"   {model_name} unavailable: {str(e)[:120]}")
                 continue
         
-        if not self.llm:
-            raise ValueError("Could not load any HuggingFace model. Please check your token.")
+        if not self.llm_client:
+            print("⚠️  No AI model available — will use rule-based fallback for all scans.")
         
-        # Create the analysis prompt
-        # Simpler prompt for open-source models
-        self.analysis_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a technical analyst. Analyze stock indicators and identify trading opportunities.
-
-Look for these signals:
-- RSI < 30 = Oversold (potential buy)
-- RSI > 70 = Overbought (potential sell)
-- MACD positive + RSI mid-range = Bullish
-- Volume > 2x average = Strong interest
-
-Format your response EXACTLY like this:
-INTERESTING: Yes or No
-SIGNAL: (one word: Oversold, Overbought, Breakout, or Neutral)
-REASON: (one sentence explaining why)
-"""),
-            ("user", """Stock: {symbol}
-Price: {price}
-RSI: {rsi}
-MACD: {macd}
-Volume Ratio: {volume_ratio}x
-
-Analyze:""")
-        ])
+        # System prompt for analysis
+        self.system_prompt = (
+            "You are a technical stock analyst. Analyze indicators and identify trading opportunities. "
+            "Look for: RSI < 30 = Oversold (potential buy), RSI > 70 = Overbought (potential sell), "
+            "MACD positive + RSI mid-range = Bullish, Volume > 2x average = Strong interest. "
+            "Format your response EXACTLY like this (3 lines only):\n"
+            "INTERESTING: Yes or No\n"
+            "SIGNAL: (one word: Oversold, Overbought, Breakout, or Neutral)\n"
+            "REASON: (one sentence explaining why)"
+        )
     
-    def scan_stock(self, symbol: str) -> Dict | None:
+    def scan_stock(self, symbol: str) -> Optional[Dict]:
         """
         Scan a single stock for trading opportunities.
         
@@ -122,21 +117,39 @@ Analyze:""")
             # Step 3: Get latest values
             latest = self.indicators.get_latest_signals(data_with_indicators)
             
-            # Step 4: Ask the AI to analyze (simplified for open-source model)
-            chain = self.analysis_prompt | self.llm
-            response = chain.invoke({
-                "symbol": symbol,
-                "price": f"{latest['price']:.2f}",
-                "rsi": f"{latest['rsi']:.2f}",
-                "macd": f"{latest['macd']:.2f}",
-                "volume_ratio": f"{latest['volume_ratio']:.2f}"
-            })
-            
-            # Step 5: Parse the model's response
-            analysis = response
-            
-            # Check if the model found it interesting
-            is_interesting = "INTERESTING: Yes" in analysis.upper() or "INTERESTING:Yes" in analysis.upper()
+            # Step 4: Try AI analysis, fall back to rules if it fails
+            try:
+                if not self.llm_client:
+                    raise RuntimeError("No AI client available")
+                
+                user_message = (
+                    f"Stock: {symbol}\n"
+                    f"Price: {latest['price']:.2f}\n"
+                    f"RSI: {latest['rsi']:.2f}\n"
+                    f"MACD: {latest['macd']:.2f}\n"
+                    f"Volume Ratio: {latest['volume_ratio']:.2f}x\n\n"
+                    f"Analyze this stock and respond in the exact 3-line format."
+                )
+                
+                response = self.llm_client.chat_completion(
+                    messages=[
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": user_message}
+                    ],
+                    max_tokens=200,
+                    temperature=0.3
+                )
+                
+                # Step 5: Parse the model's response
+                analysis = response.choices[0].message.content.strip()
+                is_interesting = "INTERESTING: YES" in analysis.upper() or "INTERESTING:YES" in analysis.upper()
+                print(f"   AI analysis complete ({self.llm_model})")
+                
+            except Exception as ai_error:
+                # AI failed - use rule-based fallback
+                print(f"   AI error: {type(ai_error).__name__}: {str(ai_error)[:150]}")
+                print(f"   Falling back to rule-based analysis")
+                is_interesting, analysis = self._rule_based_fallback(latest)
             
             # Always return result with reasoning
             return {
@@ -147,15 +160,59 @@ Analyze:""")
                 'indicators': latest,
                 'interesting': is_interesting  # Flag to indicate if picked
             }
-            
-            if is_interesting:
-                print(f"   Interesting!")
-            else:
-                print(f"   Not interesting")
                 
         except Exception as e:
             print(f"   Error scanning {symbol}: {str(e)}")
             return None
+    
+    def _rule_based_fallback(self, indicators: Dict) -> tuple:
+        """
+        Rule-based analysis when AI fails.
+        
+        Args:
+            indicators: Dict with RSI, MACD, volume_ratio
+            
+        Returns:
+            Tuple of (is_interesting: bool, analysis: str)
+        """
+        rsi = indicators['rsi']
+        macd = indicators['macd']
+        volume_ratio = indicators['volume_ratio']
+        
+        # Rule 1: Oversold reversal
+        if rsi < 30 and macd > 0:
+            return True, f"""INTERESTING: Yes
+SIGNAL: Oversold Reversal  
+REASON: RSI {rsi:.1f} (oversold) + positive MACD {macd:.2f} suggests potential bounce."""
+        
+        # Rule 2: Extreme oversold
+        if rsi < 25:
+            return True, f"""INTERESTING: Yes
+SIGNAL: Extreme Oversold
+REASON: RSI {rsi:.1f} shows heavy selling. Mean reversion likely."""
+        
+        # Rule 3: Overbought
+        if rsi > 70:
+            return True, f"""INTERESTING: Yes
+SIGNAL: Overbought
+REASON: RSI {rsi:.1f} indicates extended run. Pullback possible."""
+        
+        # Rule 4: Volume breakout
+        if volume_ratio > 2.0 and 40 < rsi < 60:
+            return True, f"""INTERESTING: Yes
+SIGNAL: Volume Breakout
+REASON: Volume {volume_ratio:.1f}x average with neutral RSI shows strong interest."""
+        
+        # Rule 5: Bullish momentum
+        if macd > 5 and 45 < rsi < 65:
+            return True, f"""INTERESTING: Yes
+SIGNAL: Bullish Momentum
+REASON: Positive MACD {macd:.2f} + healthy RSI {rsi:.1f} = uptrend."""
+        
+        # No clear signal
+        return False, f"""INTERESTING: No
+SIGNAL: Neutral
+REASON: RSI {rsi:.1f}, MACD {macd:.2f}, Volume {volume_ratio:.1f}x. No clear setup."""
     
     def scan(self, symbols: List[str]) -> List[Dict]:
         """
@@ -188,7 +245,7 @@ Analyze:""")
 
 
 # Nifty 50 stocks (sample list)
-NIFTY_50_SAMPLE = [
+NIFTY_50_SAMPLE: list[str] = [
     'RELIANCE.NS',
     'TCS.NS',
     'HDFCBANK.NS',
