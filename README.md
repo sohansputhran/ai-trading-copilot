@@ -294,7 +294,7 @@ python src/data_pipeline/collector.py
 
 **Technical Indicators:**
 ```bash
-python src/data_pipeline/indicators_simple.py
+python src/data_pipeline/indicators.py
 ```
 
 **Scanner Agent:**
@@ -319,7 +319,7 @@ ai-trading-copilot/
 │   │   └── rule_based_scanner.py     # Pure rule-based (backup)
 │   ├── data_pipeline/
 │   │   ├── collector.py              # Yahoo Finance data fetcher
-│   │   └── indicators_simple.py      # Technical indicators (manual)
+│   │   └── indicators.py      # Technical indicators (manual)
 │   └── utils/
 │       └── config.py                 # Environment config loader
 ├── streamlit_app/
