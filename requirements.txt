@@ -1,22 +1,36 @@
-# Data fetching and processing
-yfinance           # Get stock data from Yahoo Finance
-pandas              # Work with data (tables, calculations)
-numpy               # Math operations
+# Core agent framework
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-community>=0.3.0
 
-# Agent framework
-langchain           # Build the scanner agent
-langchain-huggingface  # Connect to HuggingFace models (FREE!)
-langgraph          # Simple agent workflow     
-langchain-core
+# LLM (HuggingFace)
+transformers>=4.40.0
+torch>=2.0.0
+huggingface-hub>=0.22.0
 
-# UI
-streamlit          # Dashboard
-plotly             # Interactive charts         
+# Data pipeline
+yfinance>=0.2.36
+pandas>=2.0.0
+numpy>=1.26.0
 
-# Backend
-python-dotenv        # Load .env file (for API key)
+# Web framework & UI
+streamlit>=1.32.0
+fastapi>=0.110.0
+uvicorn>=0.29.0
+
+# Logging & observability
+structlog>=24.1.0
 
 # Testing
-pytest               # Write tests
-black
-ruff
+pytest>=8.0.0
+pytest-cov>=5.0.0
+
+# Code quality
+black>=24.0.0
+ruff>=0.4.0
+mypy>=1.9.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.6.0
+tenacity>=8.2.0          # Retry logic for API calls
