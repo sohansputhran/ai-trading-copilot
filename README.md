@@ -69,21 +69,28 @@ REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
 
 **Sprint 1 - Complete ✅**
 
-- ✅ **Market data collection** - Real-time data from Yahoo Finance (NSE/BSE stocks)
-- ✅ **Technical indicators** - RSI, MACD, Bollinger Bands (calculated from scratch!)
-- ✅ **AI Scanner Agent** - Free HuggingFace Llama-3-8B with smart fallback
-- ✅ **Dual results view** - See both interesting AND not-interesting stocks with reasons
-- ✅ **Rule-based fallback** - Works even if AI model fails
-- ✅ **Streamlit Dashboard** - Professional UI with tabs and interactive charts
-- ✅ **Comprehensive logging** - Track what AI is doing
+* ✅ **Market data collection** - Fetches stock prices from Yahoo Finance
+* ✅ **Technical indicators** - RSI, MACD, Bollinger Bands (manual calculation)
+* ✅ **AI Scanner Agent** - Uses free HuggingFace Llama-3-8B model via `InferenceClient`
+* ✅ **Strict classification** - Pre-computed trigger hints prevent AI from over-flagging
+* ✅ **Rule-based fallback** - Works even if AI model is unavailable
+* ✅ **Streamlit Dashboard** - Professional UI with interactive charts
+* ✅ **100% Free** - No API costs
 
-**Coming in Future Sprints:**
+**Sprint 2 - In Progress 🚧**
 
-- 📅 **Sprint 2** - Multi-agent strategy system (Technical, Momentum, Breakout agents)
-- 📅 **Sprint 3** - Risk management engine (Kelly Criterion, position sizing)
-- 📅 **Sprint 4** - Paper trading integration (Upstox API)
-- 📅 **Sprint 5** - Trade journal & analytics (PostgreSQL, performance metrics)
-- 📅 **Sprint 6** - Production deployment (Docker, CI/CD)
+* ✅ **Multi-agent orchestration** - LangGraph StateGraph coordinates 3 specialized agents in parallel
+* ✅ **Typed state management** - Single `TradingState` schema flows through entire agent pipeline
+* ✅ **Confidence scoring** - Weighted aggregation with agreement penalty prevents low-conviction trades
+* ✅ **Explainable decisions** - Every final signal includes per-agent reasoning breakdown
+
+## 🔜 Upcoming Sprints
+
+* **Sprint 2 (in progress):** Momentum + Breakout agents, enhanced Streamlit dashboard
+* **Sprint 3:** Risk management engine (Kelly Criterion, position sizing)
+* **Sprint 4:** Paper trading via Upstox API
+* **Sprint 5:** Trade journal & analytics (PostgreSQL)
+* **Sprint 6:** Production deployment (Docker, CI/CD)
 
 ---
 
@@ -285,28 +292,16 @@ except:
 
 ## 🧪 Testing
 
-### Test Individual Components
+### Unit tests — no external dependencies needed
+# Tests state schema, agent signal logic, and aggregator math. Runs instantly with just `pytest` and `structlog`.
+pytest tests/test_agents.py -v
 
-**Data Collector:**
-```bash
-python src/data_pipeline/collector.py
-```
+### Integration tests — requires LangGraph
+# Tests the full LangGraph pipeline end-to-end using mock agents. Auto-skipped if LangGraph is not installed.
+pytest tests/test_orchestrator.py -v
 
-**Technical Indicators:**
-```bash
-python src/data_pipeline/indicators.py
-```
-
-**Scanner Agent:**
-```bash
-python src/agents/scanner_agent.py
-```
-
-**Rule-Based Scanner (no AI):**
-```bash
-python src/agents/rule_based_scanner.py
-```
-
+### Run all tests
+pytest tests/ -v
 ---
 
 ## 📁 Project Structure
@@ -315,21 +310,25 @@ python src/agents/rule_based_scanner.py
 ai-trading-copilot/
 ├── src/
 │   ├── agents/
-│   │   ├── scanner_agent.py          # AI scanner with fallback
-│   │   └── rule_based_scanner.py     # Pure rule-based (backup)
+│   │   ├── scanner_agent.py        # Sprint 1: AI scanner using HuggingFace
+│   │   ├── state.py                # Sprint 2: TradingState schema (LangGraph)
+│   │   ├── base_agent.py           # Sprint 2: Abstract base for all agents
+│   │   ├── technical_agent.py      # Sprint 2: Oscillator-based strategy agent
+│   │   ├── aggregator.py           # Sprint 2: Combines multi-agent signals
+│   │   └── orchestrator.py         # Sprint 2: LangGraph StateGraph coordinator
 │   ├── data_pipeline/
-│   │   ├── collector.py              # Yahoo Finance data fetcher
-│   │   └── indicators.py      # Technical indicators (manual)
+│   │   ├── collector.py            # Fetches stock data (Yahoo Finance)
+│   │   └── indicators.py           # Technical indicators (manual calculation)
 │   └── utils/
-│       └── config.py                 # Environment config loader
+│       └── config.py               # Loads environment variables
 ├── streamlit_app/
-│   └── app.py                        # Main dashboard UI
-├── screenshots/                       # Dashboard screenshots
-├── requirements.txt                   # Python dependencies
-├── .env.example                      # Environment template
-├── .gitignore                        # Git ignore rules
-├── LICENSE                           # MIT License
-└── README.md                         # This file
+│   └── app.py                      # Dashboard UI
+├── tests/
+│   ├── test_agents.py              # Unit tests (no external deps)
+│   └── test_orchestrator.py        # Integration tests (requires LangGraph)
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Environment template
+└── README.md                       # This file
 ```
 
 ---
