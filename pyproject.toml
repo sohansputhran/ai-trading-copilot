@@ -1,0 +1,50 @@
+[tool.ruff]
+# Target the Python version you're actually using
+target-version = "py311"
+
+# Directories to check — exclude notebooks and any generated files
+include = ["src/**/*.py", "tests/**/*.py", "streamlit_app/**/*.py"]
+exclude = [
+    "notebooks/",
+    "__pycache__/",
+    ".venv/",
+    "venv/",
+]
+
+line-length = 100   # Black's default is 88 — give a bit more room for trading formulas
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors (indentation, whitespace, etc.)
+    "F",    # pyflakes (undefined names, unused imports — the important ones)
+    "W",    # pycodestyle warnings
+    "I",    # isort (import ordering)
+    "UP",   # pyupgrade (modernise Python syntax automatically)
+]
+
+ignore = [
+    "E501",  # Line too long — black handles this, no need to double-check
+    "E741",  # Ambiguous variable names — 'l', 'O', 'I'
+              # We use 'l' in financial formulas (e.g. loss), leave it alone
+    "F841",  # Local variable assigned but never used
+              # Useful during development when stubbing out logic
+]
+
+[tool.ruff.lint.isort]
+# Group imports: stdlib → third-party → local
+# This matches the style already used across your src/ files
+known-first-party = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+# Exclude generated or vendored files
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | __pycache__
+  | notebooks
+)/
+'''

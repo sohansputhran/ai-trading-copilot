@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install linting tools
+        run: pip install ruff black
+
+      - name: Run ruff (linting)
+        # ruff checks for real code issues: unused imports, undefined names,
+        # dangerous patterns. Fails the build if any are found.
+        run: ruff check src/ tests/
+
+      - name: Run black (formatting check)
+        # --check makes black exit non-zero if any file WOULD be reformatted.
+        # Does not modify files — just tells you what needs fixing.
+        run: black --check src/ tests/
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    # Run tests even if lint fails — you want to see both sets of problems
+    # at once rather than fixing lint and then discovering test failures.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          # Key includes requirements hash — cache invalidates when deps change
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-ci.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install CI dependencies
+        # requirements-ci.txt is a minimal install — no torch, no transformers,
+        # no HuggingFace. Keeps CI under 30 seconds instead of 5+ minutes.
+        run: pip install -r requirements-ci.txt
+
+      - name: Run unit tests
+        # test_agents.py has zero external dependencies — runs anywhere.
+        # test_orchestrator.py requires langgraph (in requirements-ci.txt)
+        # and auto-skips if it's not available.
+        run: pytest tests/ -v --tb=short
+
+      - name: Upload coverage report
+        # Only runs if tests pass. Uploads as an artifact you can view
+        # in the Actions tab — useful for seeing which lines aren't tested.
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+          retention-days: 7
