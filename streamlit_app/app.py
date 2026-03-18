@@ -232,25 +232,13 @@ if scan_button:
         not_interesting_stocks = [r for r in results if not r.get('interesting', False)]
         
         # Display summary
-        col1, col2, col3, col4, col5 = st.columns(5)
+        col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Total Scanned", len(results))
         with col2:
             st.metric("Interesting", len(interesting_stocks))
         with col3:
             st.metric("Not Interesting", len(not_interesting_stocks))
-
-        # Multi-agent signal summary
-        if any(r.get("multi_agent") for r in results):
-            multi_results = [r["multi_agent"] for r in results if r.get("multi_agent")]
-            buy_count  = sum(1 for m in multi_results
-                             if m.get("final_signal") and m["final_signal"].value == "BUY")
-            sell_count = sum(1 for m in multi_results
-                             if m.get("final_signal") and m["final_signal"].value == "SELL")
-            with col4:
-                st.metric("Multi-Agent BUY", buy_count)
-            with col5:
-                st.metric("Multi-Agent SELL", sell_count)
         
         # Create tabs for interesting vs not interesting
         tab1, tab2 = st.tabs(["Interesting Stocks", "Not Interesting"])
