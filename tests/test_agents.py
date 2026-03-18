@@ -246,6 +246,138 @@ def test_aggregator_reasoning_contains_all_agents():
     assert "BREAKOUT_STRATEGY"  in reasoning
 
 
+# ─────────────────────────────────────────────
+# MomentumStrategyAgent tests
+# ─────────────────────────────────────────────
+
+def test_momentum_buy_on_bullish_cross_strong_trend():
+    """EMA20 > EMA50 + ADX=45 (strong trend) → BUY with high confidence."""
+    from src.agents.momentum_agent import MomentumStrategyAgent
+    agent = MomentumStrategyAgent(llm_client=None)
+    state = initial_state("TEST.NS", {}, {
+        "ema_20":    2520.0,
+        "ema_50":    2480.0,
+        "ema_cross":  1.0,    # Bullish
+        "adx":       45.0,    # Strong trend
+        "rsi":       58.0,
+        "price":     2530.0,
+    })
+    result = agent.analyze(state)
+
+    assert result.signal     == Signal.BUY
+    assert result.confidence  > 0.7
+
+
+def test_momentum_hold_on_weak_adx():
+    """ADX < 20 regardless of EMA cross → HOLD (no trend to follow)."""
+    from src.agents.momentum_agent import MomentumStrategyAgent
+    agent = MomentumStrategyAgent(llm_client=None)
+    state = initial_state("TEST.NS", {}, {
+        "ema_20":    2520.0,
+        "ema_50":    2480.0,
+        "ema_cross":  1.0,    # Bullish cross — but ADX is too weak
+        "adx":       12.0,    # No trend
+        "rsi":       55.0,
+        "price":     2525.0,
+    })
+    result = agent.analyze(state)
+
+    assert result.signal == Signal.HOLD
+    assert any("ADX" in w for w in result.warnings)
+
+
+def test_momentum_sell_on_bearish_cross():
+    """EMA20 < EMA50 + ADX strong → SELL."""
+    from src.agents.momentum_agent import MomentumStrategyAgent
+    agent = MomentumStrategyAgent(llm_client=None)
+    state = initial_state("TEST.NS", {}, {
+        "ema_20":    2460.0,
+        "ema_50":    2500.0,
+        "ema_cross": -1.0,    # Bearish
+        "adx":       38.0,    # Developing strong trend
+        "rsi":       42.0,
+        "price":     2455.0,
+    })
+    result = agent.analyze(state)
+
+    assert result.signal     == Signal.SELL
+    assert result.confidence  > 0.5
+
+
+# ─────────────────────────────────────────────
+# BreakoutStrategyAgent tests
+# ─────────────────────────────────────────────
+
+def test_breakout_buy_on_confirmed_breakout():
+    """Price above resistance + 2.5x volume → BUY with high confidence."""
+    from src.agents.breakout_agent import BreakoutStrategyAgent
+    agent = BreakoutStrategyAgent(llm_client=None)
+    state = initial_state("TEST.NS", {}, {
+        "volume_ratio":        2.5,    # Strong volume
+        "price_vs_resistance": 1.02,   # Price above resistance — confirmed
+        "atr":                 30.0,
+        "price":               2550.0,
+        "resistance":          2500.0,
+        "rsi":                 62.0,
+    })
+    result = agent.analyze(state)
+
+    assert result.signal     == Signal.BUY
+    assert result.confidence  > 0.6
+
+
+def test_breakout_hold_on_low_volume():
+    """Price at resistance but low volume → HOLD (false breakout risk)."""
+    from src.agents.breakout_agent import BreakoutStrategyAgent
+    agent = BreakoutStrategyAgent(llm_client=None)
+    state = initial_state("TEST.NS", {}, {
+        "volume_ratio":        1.1,    # Insufficient volume
+        "price_vs_resistance": 1.00,   # At resistance
+        "atr":                 25.0,
+        "price":               2500.0,
+        "resistance":          2500.0,
+        "rsi":                 58.0,
+    })
+    result = agent.analyze(state)
+
+    assert result.signal == Signal.HOLD
+
+
+def test_breakout_sell_on_breakdown():
+    """Price well below recent high + high volume → SELL."""
+    from src.agents.breakout_agent import BreakoutStrategyAgent
+    agent = BreakoutStrategyAgent(llm_client=None)
+    state = initial_state("TEST.NS", {}, {
+        "volume_ratio":        2.2,    # Strong volume
+        "price_vs_resistance": 0.82,   # Well below recent high
+        "atr":                 35.0,
+        "price":               2050.0,
+        "resistance":          2500.0,
+        "rsi":                 38.0,
+    })
+    result = agent.analyze(state)
+
+    assert result.signal == Signal.SELL
+
+
+def test_breakout_warns_on_extreme_volume():
+    """Volume 3x+ should trigger climactic exhaustion warning."""
+    from src.agents.breakout_agent import BreakoutStrategyAgent
+    agent = BreakoutStrategyAgent(llm_client=None)
+    state = initial_state("TEST.NS", {}, {
+        "volume_ratio":        3.5,    # Extreme
+        "price_vs_resistance": 1.01,
+        "atr":                 30.0,
+        "price":               2525.0,
+        "resistance":          2500.0,
+        "rsi":                 65.0,
+    })
+    result = agent.analyze(state)
+
+    assert any("climactic" in w.lower() or "exhaustion" in w.lower()
+               for w in result.warnings)
+
+
 def test_aggregator_missing_all_analyses():
     """If all agents failed and state has no analyses, should HOLD gracefully."""
     state   = initial_state("TEST.NS", {}, {})

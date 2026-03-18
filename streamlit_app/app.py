@@ -32,6 +32,93 @@ except Exception as e:
 from src.data_pipeline.collector import MarketDataCollector
 from src.data_pipeline.indicators import SimpleTechnicalIndicators
 
+# Multi-agent orchestration
+try:
+    from src.agents.technical_agent import TechnicalAnalysisAgent
+    from src.agents.momentum_agent import MomentumStrategyAgent
+    from src.agents.breakout_agent import BreakoutStrategyAgent
+    from src.agents.orchestrator import MultiAgentOrchestrator
+    MULTI_AGENT_AVAILABLE = True
+except ImportError:
+    MULTI_AGENT_AVAILABLE = False
+
+
+# ─────────────────────────────────────────────
+# Multi-agent UI helpers
+# ─────────────────────────────────────────────
+
+def signal_badge(signal_str: str) -> str:
+    return {"BUY": "🟢 BUY", "SELL": "🔴 SELL", "HOLD": "🟡 HOLD"}.get(signal_str, signal_str)
+
+def confidence_bar(confidence: float) -> str:
+    filled = int(confidence * 10)
+    return "█" * filled + "░" * (10 - filled) + f"  {confidence:.0%}"
+
+def render_agent_card(analysis, col):
+    signal_str = analysis.signal.value if hasattr(analysis.signal, "value") else str(analysis.signal)
+    if signal_str == "BUY":
+        col.success(f"**{analysis.agent_name.replace('_', ' ').title()}**")
+    elif signal_str == "SELL":
+        col.error(f"**{analysis.agent_name.replace('_', ' ').title()}**")
+    else:
+        col.warning(f"**{analysis.agent_name.replace('_', ' ').title()}**")
+    col.markdown(f"Signal: **{signal_badge(signal_str)}**")
+    col.markdown(f"Confidence: `{confidence_bar(analysis.confidence)}`")
+    col.caption(analysis.reasoning[:200] + "..." if len(analysis.reasoning) > 200 else analysis.reasoning)
+    if analysis.warnings:
+        for w in analysis.warnings:
+            col.warning(f"⚠️ {w}")
+
+def render_multi_agent_tab(multi_result: dict):
+    if multi_result is None:
+        st.info("Multi-agent analysis unavailable — LangGraph not installed.")
+        return
+    final_signal     = multi_result.get("final_signal")
+    final_confidence = multi_result.get("final_confidence", 0)
+    agent_agreement  = multi_result.get("agent_agreement", 0)
+    final_reasoning  = multi_result.get("final_reasoning", "")
+    errors           = multi_result.get("errors", [])
+    signal_str = final_signal.value if hasattr(final_signal, "value") else str(final_signal)
+
+    st.markdown("#### Final Decision")
+    dec_col1, dec_col2, dec_col3 = st.columns(3)
+    with dec_col1:
+        if signal_str == "BUY":
+            st.success(f"### {signal_badge(signal_str)}")
+        elif signal_str == "SELL":
+            st.error(f"### {signal_badge(signal_str)}")
+        else:
+            st.warning(f"### {signal_badge(signal_str)}")
+    with dec_col2:
+        st.metric("Confidence", f"{final_confidence:.0%}")
+    with dec_col3:
+        agreement_pct = f"{agent_agreement:.0%}"
+        if agent_agreement == 1.0:
+            st.metric("Agent Agreement", agreement_pct, "unanimous")
+        elif agent_agreement >= 0.67:
+            st.metric("Agent Agreement", agreement_pct, "majority")
+        else:
+            st.metric("Agent Agreement", agreement_pct, "split — low conviction")
+
+    st.markdown("#### Agent Breakdown")
+    a_col1, a_col2, a_col3 = st.columns(3)
+    tech = multi_result.get("technical_analysis")
+    mom  = multi_result.get("momentum_analysis")
+    brk  = multi_result.get("breakout_analysis")
+    if tech: render_agent_card(tech, a_col1)
+    else:    a_col1.error("Technical agent failed")
+    if mom:  render_agent_card(mom, a_col2)
+    else:    a_col2.error("Momentum agent failed")
+    if brk:  render_agent_card(brk, a_col3)
+    else:    a_col3.error("Breakout agent failed")
+
+    with st.expander("Full reasoning chain"):
+        st.text(final_reasoning)
+    if errors:
+        with st.expander(f"⚠️ {len(errors)} non-fatal error(s)"):
+            for e in errors:
+                st.caption(e)
+
 # Page config
 st.set_page_config(
     page_title="AI Trading Scanner",
@@ -81,13 +168,59 @@ if scan_button:
         
         # Initialize scanner
         scanner = MarketScanner()
-        
+
+        # Initialize multi-agent orchestrator (reuses scanner's LLM client)
+        orchestrator = None
+        if MULTI_AGENT_AVAILABLE:
+            try:
+                orchestrator = MultiAgentOrchestrator(
+                    technical_agent = TechnicalAnalysisAgent(
+                        llm_client=scanner.llm_client,
+                        llm_model=scanner.llm_model or "unknown",
+                    ),
+                    momentum_agent  = MomentumStrategyAgent(
+                        llm_client=scanner.llm_client,
+                        llm_model=scanner.llm_model or "unknown",
+                    ),
+                    breakout_agent  = BreakoutStrategyAgent(
+                        llm_client=scanner.llm_client,
+                        llm_model=scanner.llm_model or "unknown",
+                    ),
+                )
+            except Exception as e:
+                st.warning(f"Multi-agent orchestrator unavailable: {e}")
+
         # Run scan with progress updates
         results = []
         for i, symbol in enumerate(symbols):
             status_text.text(f"Scanning {symbol}... ({i+1}/{len(symbols)})")
             result = scanner.scan_stock(symbol)
             if result:
+                # Run multi-agent analysis and attach to result
+                if orchestrator is not None:
+                    try:
+                        multi = orchestrator.analyze(
+                            symbol,
+                            result.get("indicators", {}),  # market_data
+                            result.get("indicators", {}),  # indicators (same dict)
+                        )
+                        result["multi_agent"] = multi
+
+                        # Override single scanner classification with multi-agent decision.
+                        # A stock is "interesting" if the aggregator produced a
+                        # non-HOLD signal - confidence threshold already enforced
+                        # inside aggregator.py, so we trust the output directly.
+                        final_signal = multi.get("final_signal")
+                        if final_signal is not None:
+                            result["interesting"] = (
+                                final_signal.value in ("BUY", "SELL")
+                            )
+                    except Exception as e:
+                        result["multi_agent"] = None
+                        # Keep single scanner classification on failure
+                else:
+                    result["multi_agent"] = None
+                    # No orchestrator - single scanner classification stands
                 results.append(result)
             progress_bar.progress((i + 1) / len(symbols))
         
@@ -199,6 +332,11 @@ if scan_button:
                             
                         except Exception as e:
                             st.warning(f"Could not load chart: {str(e)}")
+
+                        # Multi-agent analysis tab
+                        st.markdown("---")
+                        st.markdown("### 🤖 Multi-Agent Analysis")
+                        render_multi_agent_tab(result.get("multi_agent"))
             
             else:
                 st.info("No stocks with clear signals found.")
@@ -238,6 +376,11 @@ if scan_button:
                         with col2:
                             st.markdown("### AI Analysis")
                             st.info(result['analysis'].replace('\n', '\n\n'))
+
+                        # Multi-agent analysis
+                        st.markdown("---")
+                        st.markdown("### 🤖 Multi-Agent Analysis")
+                        render_multi_agent_tab(result.get("multi_agent"))
             
             else:
                 st.success("All stocks showed interesting signals!")
@@ -261,7 +404,8 @@ else:
     - 📈 **Volume spikes** (unusual trading activity)
     
     ### Powered by:
-    - **HuggingFace Mistral-7B** (Free AI model)
+    - **HuggingFace Llama-3-8B** (Free AI model)
+    - **LangGraph** (Multi-agent orchestration)
     - **Yahoo Finance** (Free market data)
     - **Streamlit** (This beautiful dashboard)
     
