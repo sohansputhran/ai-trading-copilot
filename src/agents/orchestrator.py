@@ -27,12 +27,13 @@ Why this topology over alternatives:
 - Parallel fan-out: fastest, independent opinions, clean state merging
 """
 
-import structlog
 from typing import Any
-from langgraph.graph import StateGraph, END, START
 
-from src.agents.state import TradingState, initial_state
+import structlog
+from langgraph.graph import END, START, StateGraph
+
 from src.agents.aggregator import aggregate
+from src.agents.state import TradingState, initial_state
 
 logger = structlog.get_logger()
 

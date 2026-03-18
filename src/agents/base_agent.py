@@ -25,11 +25,12 @@ HuggingFace integration:
 """
 
 import re
-import structlog
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any
 
-from src.agents.state import TradingState, AgentAnalysis, Signal
+import structlog
+
+from src.agents.state import AgentAnalysis, Signal, TradingState
 
 logger = structlog.get_logger()
 
@@ -138,7 +139,7 @@ class BaseStrategyAgent(ABC):
         else:
             return Signal.HOLD
 
-    def safe_get(self, indicators: Dict[str, Any], key: str, default: float = 0.0) -> float:
+    def safe_get(self, indicators: dict[str, Any], key: str, default: float = 0.0) -> float:
         """
         Safely retrieve an indicator value with a fallback default.
 

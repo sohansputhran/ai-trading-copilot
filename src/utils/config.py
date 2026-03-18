@@ -16,6 +16,7 @@ USAGE:
 """
 
 import os
+
 from dotenv import load_dotenv
 
 # Load .env file (looks for .env in project root)

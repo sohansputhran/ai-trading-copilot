@@ -19,10 +19,10 @@ Confidence thresholds (what triggers a BUY/SELL recommendation):
     Otherwise → HOLD (don't trade uncertain signals)
 """
 
-import structlog
-from typing import List
 
-from src.agents.state import TradingState, AgentAnalysis, Signal, AgentName
+import structlog
+
+from src.agents.state import AgentAnalysis, AgentName, Signal, TradingState
 
 logger = structlog.get_logger()
 
@@ -131,7 +131,7 @@ def aggregate(state: TradingState) -> TradingState:
 # Private helpers
 # ─────────────────────────────────────────────
 
-def _collect_analyses(state: TradingState) -> List[AgentAnalysis]:
+def _collect_analyses(state: TradingState) -> list[AgentAnalysis]:
     """Pull all non-None agent analyses from state."""
     analyses = []
     for key in ("technical_analysis", "momentum_analysis", "breakout_analysis"):
@@ -141,7 +141,7 @@ def _collect_analyses(state: TradingState) -> List[AgentAnalysis]:
     return analyses
 
 
-def _weighted_confidence(analyses: List[AgentAnalysis], target_signal: Signal) -> float:
+def _weighted_confidence(analyses: list[AgentAnalysis], target_signal: Signal) -> float:
     """
     Compute confidence as a weighted average, but only for agents
     that agree with the dominant signal.
@@ -169,7 +169,7 @@ def _weighted_confidence(analyses: List[AgentAnalysis], target_signal: Signal) -
 
 
 def _build_reasoning(
-    analyses: List[AgentAnalysis],
+    analyses: list[AgentAnalysis],
     dominant_signal: Signal,
     final_signal: Signal,
     final_confidence: float,

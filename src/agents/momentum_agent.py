@@ -31,11 +31,12 @@ Scoring logic (max 5.0 pts):
     Price position vs EMA20:     1.0 pts  (momentum confirmation)
 """
 
+from typing import Any
+
 import structlog
-from typing import Dict, Any, List, Tuple
 
 from src.agents.base_agent import BaseStrategyAgent
-from src.agents.state import TradingState, AgentAnalysis, Signal, AgentName
+from src.agents.state import AgentAnalysis, AgentName, Signal, TradingState
 
 logger = structlog.get_logger()
 
@@ -84,7 +85,7 @@ class MomentumStrategyAgent(BaseStrategyAgent):
     # Private: indicator extraction
     # ─────────────────────────────────────────────
 
-    def _extract_indicators(self, indicators: Dict[str, Any]) -> Dict[str, float]:
+    def _extract_indicators(self, indicators: dict[str, Any]) -> dict[str, float]:
         """Pull only the indicators this agent uses."""
         return {
             "ema_20":    self.safe_get(indicators, "ema_20",    0.0),
@@ -100,8 +101,8 @@ class MomentumStrategyAgent(BaseStrategyAgent):
     # ─────────────────────────────────────────────
 
     def _compute_signal(
-        self, snap: Dict[str, float]
-    ) -> Tuple[Signal, float, str, List[str]]:
+        self, snap: dict[str, float]
+    ) -> tuple[Signal, float, str, list[str]]:
         """
         Multi-factor momentum scoring.
 
@@ -122,8 +123,8 @@ class MomentumStrategyAgent(BaseStrategyAgent):
 
         bull_score = 0.0
         bear_score = 0.0
-        reasons:  List[str] = []
-        warnings: List[str] = []
+        reasons:  list[str] = []
+        warnings: list[str] = []
 
         # ── Gate: ADX must show a trend exists ───────────────────────────────
         if adx < self.ADX_WEAK_TREND:
@@ -218,7 +219,7 @@ class MomentumStrategyAgent(BaseStrategyAgent):
     # ─────────────────────────────────────────────
 
     def _get_llm_reasoning(
-        self, symbol: str, snap: Dict[str, float], signal: Signal
+        self, symbol: str, snap: dict[str, float], signal: Signal
     ) -> str:
         if self.llm_client is None:
             return ""

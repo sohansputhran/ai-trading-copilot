@@ -31,11 +31,12 @@ Scoring logic (max 5.0 pts):
     ATR expansion:              1.0 pts  (is volatility supporting the move?)
 """
 
+from typing import Any
+
 import structlog
-from typing import Dict, Any, List, Tuple
 
 from src.agents.base_agent import BaseStrategyAgent
-from src.agents.state import TradingState, AgentAnalysis, Signal, AgentName
+from src.agents.state import AgentAnalysis, AgentName, Signal, TradingState
 
 logger = structlog.get_logger()
 
@@ -89,7 +90,7 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
     # Private: indicator extraction
     # ─────────────────────────────────────────────
 
-    def _extract_indicators(self, indicators: Dict[str, Any]) -> Dict[str, float]:
+    def _extract_indicators(self, indicators: dict[str, Any]) -> dict[str, float]:
         """Pull only the indicators this agent uses."""
         return {
             "volume_ratio":        self.safe_get(indicators, "volume_ratio",        1.0),
@@ -105,8 +106,8 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
     # ─────────────────────────────────────────────
 
     def _compute_signal(
-        self, snap: Dict[str, float]
-    ) -> Tuple[Signal, float, str, List[str]]:
+        self, snap: dict[str, float]
+    ) -> tuple[Signal, float, str, list[str]]:
         """
         Breakout scoring.
 
@@ -132,8 +133,8 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
 
         bull_score = 0.0
         bear_score = 0.0
-        reasons:  List[str] = []
-        warnings: List[str] = []
+        reasons:  list[str] = []
+        warnings: list[str] = []
 
         # ── Volume scoring (2.0 pts) ──────────────────────────────────────────
         if vol_ratio >= self.VOLUME_EXTREME:
@@ -264,15 +265,15 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
     # ─────────────────────────────────────────────
 
     def _get_llm_reasoning(
-        self, symbol: str, snap: Dict[str, float], signal: Signal
+        self, symbol: str, snap: dict[str, float], signal: Signal
     ) -> str:
         if self.llm_client is None:
             return ""
 
         pvr = snap["price_vs_resistance"]
         price_desc = (
-            f"above resistance (confirmed breakout)"       if pvr >= self.ABOVE_RESISTANCE
-            else f"at resistance (breakout imminent)"      if pvr >= self.AT_RESISTANCE
+            "above resistance (confirmed breakout)"       if pvr >= self.ABOVE_RESISTANCE
+            else "at resistance (breakout imminent)"      if pvr >= self.AT_RESISTANCE
             else f"approaching resistance ({pvr:.0%} of level)" if pvr >= self.NEAR_RESISTANCE
             else f"below resistance ({pvr:.0%} of level)"
         )

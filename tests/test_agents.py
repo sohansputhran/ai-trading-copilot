@@ -18,12 +18,10 @@ What's tested:
 """
 
 import pytest
-from src.agents.state import (
-    TradingState, AgentAnalysis, Signal, AgentName, initial_state
-)
-from src.agents.technical_agent import TechnicalAnalysisAgent
-from src.agents.aggregator import aggregate
 
+from src.agents.aggregator import aggregate
+from src.agents.state import AgentAnalysis, AgentName, Signal, TradingState, initial_state
+from src.agents.technical_agent import TechnicalAnalysisAgent
 
 # ─────────────────────────────────────────────
 # Fixtures — use exact keys from get_latest_signals()

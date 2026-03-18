@@ -20,11 +20,12 @@ This agent deliberately does NOT look at raw price levels or volume breakouts
 (that's Breakout Agent's job). Specialization makes reasoning cleaner.
 """
 
+from typing import Any
+
 import structlog
-from typing import Dict, Any, List, Tuple
 
 from src.agents.base_agent import BaseStrategyAgent
-from src.agents.state import TradingState, AgentAnalysis, Signal, AgentName
+from src.agents.state import AgentAnalysis, AgentName, Signal, TradingState
 
 logger = structlog.get_logger()
 
@@ -85,7 +86,7 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
     # Private: indicator extraction
     # ─────────────────────────────────────────────
 
-    def _extract_indicators(self, indicators: Dict[str, Any]) -> Dict[str, float]:
+    def _extract_indicators(self, indicators: dict[str, Any]) -> dict[str, float]:
         """
         Pull only the indicators this agent uses.
 
@@ -105,8 +106,8 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
     # ─────────────────────────────────────────────
 
     def _compute_signal(
-        self, snap: Dict[str, float]
-    ) -> Tuple[Signal, float, str, List[str]]:
+        self, snap: dict[str, float]
+    ) -> tuple[Signal, float, str, list[str]]:
         """
         Multi-factor scoring system.
 
@@ -129,8 +130,8 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
 
         bull_score = 0.0
         bear_score = 0.0
-        reasons:  List[str] = []
-        warnings: List[str] = []
+        reasons:  list[str] = []
+        warnings: list[str] = []
 
         # ── RSI (2.0 pts) ─────────────────────────────────────────────────────
         if rsi < self.RSI_OVERSOLD:
@@ -200,7 +201,7 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
     # ─────────────────────────────────────────────
 
     def _get_llm_reasoning(
-        self, symbol: str, snap: Dict[str, float], signal: Signal
+        self, symbol: str, snap: dict[str, float], signal: Signal
     ) -> str:
         """
         Ask the LLM to explain the pre-computed signal in plain English.

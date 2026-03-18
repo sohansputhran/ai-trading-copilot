@@ -12,9 +12,9 @@ TRADE-OFF:
 - But you understand what's happening!
 """
 
-import pandas as pd
+
 import numpy as np
-from typing import Dict
+import pandas as pd
 
 
 class SimpleTechnicalIndicators:
@@ -23,7 +23,7 @@ class SimpleTechnicalIndicators:
     
     No external indicator libraries needed - just math!
     """
-    
+
     def calculate_rsi(self, df: pd.DataFrame, period: int = 14) -> pd.Series:
         """
         Calculate RSI manually.
@@ -44,24 +44,24 @@ class SimpleTechnicalIndicators:
         """
         # Step 1: Calculate price changes
         delta = df['Close'].diff()
-        
+
         # Step 2: Separate gains and losses
         gain = delta.where(delta > 0, 0)  # Keep gains, set losses to 0
         loss = -delta.where(delta < 0, 0)  # Keep losses (as positive), set gains to 0
-        
+
         # Step 3: Calculate average gain and loss
         avg_gain = gain.rolling(window=period).mean()
         avg_loss = loss.rolling(window=period).mean()
-        
+
         # Step 4: Calculate RS (Relative Strength)
         rs = avg_gain / avg_loss
-        
+
         # Step 5: Calculate RSI
         rsi = 100 - (100 / (1 + rs))
-        
+
         return rsi
-    
-    def calculate_macd(self, df: pd.DataFrame) -> Dict[str, pd.Series]:
+
+    def calculate_macd(self, df: pd.DataFrame) -> dict[str, pd.Series]:
         """
         Calculate MACD manually.
         
@@ -83,28 +83,28 @@ class SimpleTechnicalIndicators:
         # Calculate EMAs
         ema_12 = df['Close'].ewm(span=12, adjust=False).mean()
         ema_26 = df['Close'].ewm(span=26, adjust=False).mean()
-        
+
         # MACD line
         macd_line = ema_12 - ema_26
-        
+
         # Signal line
         signal_line = macd_line.ewm(span=9, adjust=False).mean()
-        
+
         # Histogram
         histogram = macd_line - signal_line
-        
+
         return {
             'MACD': macd_line,
             'Signal': signal_line,
             'Histogram': histogram
         }
-    
+
     def calculate_bollinger_bands(
-        self, 
-        df: pd.DataFrame, 
-        period: int = 20, 
+        self,
+        df: pd.DataFrame,
+        period: int = 20,
         std_dev: float = 2.0
-    ) -> Dict[str, pd.Series]:
+    ) -> dict[str, pd.Series]:
         """
         Calculate Bollinger Bands manually.
         
@@ -124,20 +124,20 @@ class SimpleTechnicalIndicators:
         """
         # Middle band (SMA)
         middle_band = df['Close'].rolling(window=period).mean()
-        
+
         # Standard deviation
         std = df['Close'].rolling(window=period).std()
-        
+
         # Upper and lower bands
         upper_band = middle_band + (std_dev * std)
         lower_band = middle_band - (std_dev * std)
-        
+
         return {
             'Upper': upper_band,
             'Middle': middle_band,
             'Lower': lower_band
         }
-    
+
     def calculate_ema(self, df: pd.DataFrame, period: int) -> pd.Series:
         """
         Calculate Exponential Moving Average.
@@ -275,27 +275,27 @@ class SimpleTechnicalIndicators:
             DataFrame with original data + indicator columns
         """
         result = df.copy()
-        
+
         print("Calculating technical indicators (manual calculation)...")
-        
+
         # Add RSI
         result['RSI'] = self.calculate_rsi(df)
-        
+
         # Add MACD
         macd_data = self.calculate_macd(df)
         result['MACD'] = macd_data['MACD']
         result['MACD_Signal'] = macd_data['Signal']
         result['MACD_Histogram'] = macd_data['Histogram']
-        
+
         # Add Bollinger Bands
         bb_data = self.calculate_bollinger_bands(df)
         result['BB_Upper'] = bb_data['Upper']
         result['BB_Middle'] = bb_data['Middle']
         result['BB_Lower'] = bb_data['Lower']
-        
+
         # Add Volume Moving Average
         result['Volume_MA'] = df['Volume'].rolling(window=20).mean()
-        
+
         # EMAs (for Momentum Agent)
         result['EMA_20'] = self.calculate_ema(df, period=20)
         result['EMA_50'] = self.calculate_ema(df, period=50)
@@ -316,8 +316,8 @@ class SimpleTechnicalIndicators:
         print("Indicators calculated!")
 
         return result
-    
-    def get_latest_signals(self, df_with_indicators: pd.DataFrame) -> Dict:
+
+    def get_latest_signals(self, df_with_indicators: pd.DataFrame) -> dict:
         """
         Get the most recent indicator values as a flat dict.
 
@@ -358,16 +358,16 @@ class SimpleTechnicalIndicators:
             'resistance':           resistance,
             'price_vs_resistance':  price_vs_resistance,  # >0.98 = near breakout
         }
-    
+
     def _calculate_bb_position(self, row: pd.Series) -> float:
         """Calculate where price is within Bollinger Bands."""
         if pd.isna(row['BB_Upper']) or pd.isna(row['BB_Lower']):
             return 0.5
-        
+
         band_range = row['BB_Upper'] - row['BB_Lower']
         if band_range == 0:
             return 0.5
-        
+
         return (row['Close'] - row['BB_Lower']) / band_range
 
 
@@ -377,26 +377,26 @@ if __name__ == "__main__":
     Test script - run with: python -m src.data_pipeline.indicators_simple
     """
     from .collector import MarketDataCollector
-    
+
     print("\n" + "="*60)
     print("Testing Simple Technical Indicators (Manual Calculation)")
     print("="*60 + "\n")
-    
+
     # Get price data
     print("Fetching price data...")
     collector = MarketDataCollector()
     price_data = collector.fetch_data("RELIANCE.NS", period="3mo")
-    
+
     # Calculate indicators
     print("\nCalculating indicators...")
     calculator = SimpleTechnicalIndicators()
     data_with_indicators = calculator.calculate_all(price_data)
-    
+
     # Show latest values
     print("\nLatest indicator values:")
     print("-" * 60)
     latest = calculator.get_latest_signals(data_with_indicators)
-    
+
     print(f"Price: ₹{latest['price']:.2f}")
     print(f"RSI: {latest['rsi']:.2f} ", end="")
     if latest['rsi'] > 70:
@@ -405,17 +405,17 @@ if __name__ == "__main__":
         print("(Oversold)")
     else:
         print("(Neutral)")
-    
+
     print(f"MACD: {latest['macd']:.2f}")
     print(f"MACD Signal: {latest['macd_signal']:.2f}")
     print(f"Bollinger Band Position: {latest['bb_position']:.2f}")
     print(f"Volume Ratio: {latest['volume_ratio']:.2f}x average")
-    
+
     # Show sample data
     print("\n" + "-" * 60)
     print("Sample data (last 5 days):")
     print(data_with_indicators[['Close', 'RSI', 'MACD', 'BB_Upper', 'BB_Lower']].tail())
-    
+
     print("\n" + "="*60)
     print("Manual indicators working!")
     print("="*60)

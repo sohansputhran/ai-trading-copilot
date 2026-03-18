@@ -12,11 +12,10 @@ Why TypedDict?
 - All fields must be present in the dict (Optional fields default to None)
 """
 
-from typing import TypedDict, List, Optional, Dict, Any
 from dataclasses import dataclass, field
-from enum import Enum
 from datetime import datetime
-
+from enum import Enum
+from typing import Any, TypedDict
 
 # ─────────────────────────────────────────────
 # Enums
@@ -58,8 +57,8 @@ class AgentAnalysis:
     signal: Signal
     confidence: float                           # 0.0 – 1.0
     reasoning: str                              # Human-readable explanation
-    key_indicators: Dict[str, Any] = field(default_factory=dict)  # Data that drove the decision
-    warnings: List[str] = field(default_factory=list)             # Red flags worth surfacing
+    key_indicators: dict[str, Any] = field(default_factory=dict)  # Data that drove the decision
+    warnings: list[str] = field(default_factory=list)             # Red flags worth surfacing
 
     def __post_init__(self):
         """Validate confidence is in valid range."""
@@ -89,23 +88,23 @@ class TradingState(TypedDict):
 
     # ── Input (set by orchestrator before graph runs) ──────────────────────
     symbol: str
-    market_data: Dict[str, Any]         # Raw OHLCV + metadata from data pipeline
-    indicators: Dict[str, Any]          # All computed technical indicators
+    market_data: dict[str, Any]         # Raw OHLCV + metadata from data pipeline
+    indicators: dict[str, Any]          # All computed technical indicators
     scan_timestamp: str                 # ISO format string
 
     # ── Agent outputs (populated during parallel agent execution) ───────────
-    technical_analysis: Optional[AgentAnalysis]
-    momentum_analysis:  Optional[AgentAnalysis]
-    breakout_analysis:  Optional[AgentAnalysis]
+    technical_analysis: AgentAnalysis | None
+    momentum_analysis:  AgentAnalysis | None
+    breakout_analysis:  AgentAnalysis | None
 
     # ── Final decision (populated by aggregator) ────────────────────────────
-    final_signal:     Optional[Signal]
-    final_confidence: Optional[float]   # Weighted aggregate confidence
-    final_reasoning:  Optional[str]     # Summary combining all agent reasoning
-    agent_agreement:  Optional[float]   # 0.0 = all disagree, 1.0 = all agree
+    final_signal:     Signal | None
+    final_confidence: float | None   # Weighted aggregate confidence
+    final_reasoning:  str | None     # Summary combining all agent reasoning
+    agent_agreement:  float | None   # 0.0 = all disagree, 1.0 = all agree
 
     # ── Observability ────────────────────────────────────────────────────────
-    errors: List[str]                   # Non-fatal errors from any agent
+    errors: list[str]                   # Non-fatal errors from any agent
 
 
 def initial_state(symbol: str, market_data: dict, indicators: dict) -> TradingState:
