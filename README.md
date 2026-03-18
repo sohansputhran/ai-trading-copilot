@@ -61,6 +61,11 @@ REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
 
 ![Price Chart](screenshots/price_chart.png)
 
+### Multi-Agent Dashboard
+> *AI identifies stocks with clear technical signals*
+
+![Multi-Agent](screenshots/multi_agent.png)
+
 **📹 Demo Video Coming Soon!**
 
 ---
@@ -77,16 +82,20 @@ REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
 * ✅ **Streamlit Dashboard** - Professional UI with interactive charts
 * ✅ **100% Free** - No API costs
 
-**Sprint 2 - In Progress 🚧**
+**Sprint 2 - Complete ✅**
 
 * ✅ **Multi-agent orchestration** - LangGraph StateGraph coordinates 3 specialized agents in parallel
+* ✅ **TechnicalAnalysisAgent** - Oscillator signals (RSI, MACD, Bollinger Bands)
+* ✅ **MomentumStrategyAgent** - Trend-following via EMA crossovers and ADX strength gate
+* ✅ **BreakoutStrategyAgent** - Volume-confirmed price breakout detection with ATR validation
 * ✅ **Typed state management** - Single `TradingState` schema flows through entire agent pipeline
 * ✅ **Confidence scoring** - Weighted aggregation with agreement penalty prevents low-conviction trades
 * ✅ **Explainable decisions** - Every final signal includes per-agent reasoning breakdown
+* ✅ **Multi-agent dashboard** - Per-agent signal cards, confidence bars, and full reasoning chain in UI
+* ✅ **Multi-agent classification** - "Interesting" tab driven by 3-agent consensus, not single scanner
 
 ## 🔜 Upcoming Sprints
 
-* **Sprint 2 (in progress):** Momentum + Breakout agents, enhanced Streamlit dashboard
 * **Sprint 3:** Risk management engine (Kelly Criterion, position sizing)
 * **Sprint 4:** Paper trading via Upstox API
 * **Sprint 5:** Trade journal & analytics (PostgreSQL)
@@ -168,26 +177,38 @@ Open http://localhost:8501 in your browser! 🎉
 ### Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│       Streamlit Dashboard (UI)          │
-│   - Stock selection                     │
-│   - Results display (tabs)              │
-│   - Interactive charts                  │
-└──────────────────┬──────────────────────┘
-                   │
-┌──────────────────▼──────────────────────┐
-│         Scanner Agent (AI)               │
-│   - LangGraph workflow                  │
-│   - Llama-3-8B analysis                 │
-│   - Rule-based fallback                 │
-└──────────────────┬──────────────────────┘
-                   │
-┌──────────────────▼──────────────────────┐
-│       Data Pipeline Layer                │
-│   - Market data (Yahoo Finance)         │
-│   - Technical indicators (RSI, MACD)    │
-│   - Data validation & caching           │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│              Streamlit Dashboard (UI)                    │
+│   - Stock selection & scan controls                      │
+│   - Interesting / Not Interesting tabs                   │
+│   - Per-agent signal cards + confidence bars             │
+│   - Interactive candlestick charts                       │
+└─────────────────────┬────────────────────────────────────┘
+                      │
+┌─────────────────────▼────────────────────────────────────┐
+│           Multi-Agent Orchestration Layer                │
+│              (LangGraph StateGraph)                      │
+│                                                          │
+│  ┌─────────────────┐  ┌──────────────┐  ┌────────────┐ │
+│  │  Technical      │  │  Momentum    │  │  Breakout  │ │
+│  │  Analysis Agent │  │  Strategy    │  │  Strategy  │ │
+│  │  RSI/MACD/BB    │  │  EMA + ADX   │  │  Vol + ATR │ │
+│  └────────┬────────┘  └──────┬───────┘  └─────┬──────┘ │
+│           └──────────────────┼─────────────────┘        │
+│                              │                           │
+│                   ┌──────────▼──────────┐               │
+│                   │     Aggregator      │               │
+│                   │  Weighted scoring + │               │
+│                   │  agreement penalty  │               │
+│                   └──────────┬──────────┘               │
+└──────────────────────────────┼───────────────────────────┘
+                               │
+┌──────────────────────────────▼───────────────────────────┐
+│                  Data Pipeline Layer                     │
+│   - Market data (Yahoo Finance / yfinance)               │
+│   - Technical indicators: RSI, MACD, BB, EMA, ADX, ATR  │
+│   - Scanner Agent (HuggingFace Llama-3-8B)               │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ### Step-by-Step Flow
@@ -216,12 +237,25 @@ results = scanner.scan(["RELIANCE.NS", "TCS.NS", "INFY.NS"])
 #   - Returns ALL results with reasoning
 ```
 
+**3b. Multi-Agent Analysis**
+```python
+orchestrator = MultiAgentOrchestrator(
+    technical_agent=TechnicalAnalysisAgent(llm_client=...),
+    momentum_agent=MomentumStrategyAgent(llm_client=...),
+    breakout_agent=BreakoutStrategyAgent(llm_client=...),
+)
+multi_result = orchestrator.analyze(symbol, market_data, indicators)
+# Returns: TradingState with per-agent analyses + final aggregated signal
+# final_signal: BUY/SELL → "Interesting" | HOLD → "Not Interesting"
+```
+
 **4. Display in Dashboard**
 ```bash
 streamlit run streamlit_app/app.py
 # Shows:
-#   - Tab 1: Interesting stocks (with charts)
-#   - Tab 2: Not interesting (with reasons)
+#   - Tab 1: Interesting stocks (BUY/SELL from multi-agent system)
+#   - Tab 2: Not Interesting (HOLD or low-confidence signals)
+#   - Each stock: per-agent breakdown + confidence + full reasoning
 ```
 
 ---
@@ -293,15 +327,22 @@ except:
 ## 🧪 Testing
 
 ### Unit tests — no external dependencies needed
-# Tests state schema, agent signal logic, and aggregator math. Runs instantly with just `pytest` and `structlog`.
+Tests state schema, agent signal logic, and aggregator math. Runs instantly with just `pytest` and `structlog`.
+```bash
 pytest tests/test_agents.py -v
+```
 
 ### Integration tests — requires LangGraph
-# Tests the full LangGraph pipeline end-to-end using mock agents. Auto-skipped if LangGraph is not installed.
+Tests the full LangGraph pipeline end-to-end using mock agents. Auto-skipped if LangGraph is not installed.
+```bash
 pytest tests/test_orchestrator.py -v
+```
 
 ### Run all tests
+```bash
 pytest tests/ -v
+```
+
 ---
 
 ## 📁 Project Structure
@@ -310,12 +351,14 @@ pytest tests/ -v
 ai-trading-copilot/
 ├── src/
 │   ├── agents/
-│   │   ├── scanner_agent.py        # Sprint 1: AI scanner using HuggingFace
-│   │   ├── state.py                # Sprint 2: TradingState schema (LangGraph)
-│   │   ├── base_agent.py           # Sprint 2: Abstract base for all agents
-│   │   ├── technical_agent.py      # Sprint 2: Oscillator-based strategy agent
-│   │   ├── aggregator.py           # Sprint 2: Combines multi-agent signals
-│   │   └── orchestrator.py         # Sprint 2: LangGraph StateGraph coordinator
+│   │   ├── scanner_agent.py        # AI scanner using HuggingFace
+│   │   ├── state.py                # TradingState schema (LangGraph)
+│   │   ├── base_agent.py           # Abstract base for all agents
+│   │   ├── technical_agent.py      # RSI/MACD/BB oscillator agent
+│   │   ├── momentum_agent.py       # EMA crossover + ADX trend agent
+│   │   ├── breakout_agent.py       # Volume + ATR breakout agent
+│   │   ├── aggregator.py           # Weighted multi-agent aggregator
+│   │   └── orchestrator.py         # LangGraph StateGraph coordinator
 │   ├── data_pipeline/
 │   │   ├── collector.py            # Fetches stock data (Yahoo Finance)
 │   │   └── indicators.py           # Technical indicators (manual calculation)
@@ -350,11 +393,11 @@ This project showcases:
 
 ### Learning Journey
 
-Built over **2-week sprint** as part of 12-week AI Engineering learning project:
-- Learned agent orchestration with LangGraph
-- Mastered real-time data pipelines
-- Implemented production-grade error handling
-- Created portfolio-ready documentation
+Built over **4 weeks** as part of 12-week AI Engineering learning project:
+- Sprint 1: Real-time data pipelines, technical indicators, first LangGraph agent
+- Sprint 2: Multi-agent orchestration, parallel StateGraph, confidence scoring, explainable AI
+- Implemented production-grade error handling and fallback chains throughout
+- 21 passing tests (unit + integration) covering state, agents, and orchestration
 
 ---
 
@@ -422,11 +465,12 @@ Contributions welcome! This is a learning project, but improvements are apprecia
 - [x] Streamlit dashboard
 - [x] Rule-based fallback
 
-### Sprint 2: Multi-Agent System (Weeks 3-4)
-- [ ] LangGraph orchestrator
-- [ ] Specialized agents (Technical, Momentum, Breakout)
-- [ ] Agent reasoning visualization
-- [ ] Confidence scoring system
+### Sprint 2: Multi-Agent System (Weeks 3-4) ✅
+- [x] LangGraph orchestrator (parallel fan-out StateGraph)
+- [x] Specialized agents (Technical, Momentum, Breakout)
+- [x] Agent reasoning visualization in dashboard
+- [x] Confidence scoring + agreement penalty aggregator
+- [x] Multi-agent classification (overrides Sprint 1 scanner)
 
 ### Sprint 3: Risk Management (Weeks 5-6)
 - [ ] Kelly Criterion position sizing
