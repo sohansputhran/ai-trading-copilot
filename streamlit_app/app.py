@@ -32,6 +32,7 @@ except Exception as e:
 from src.data_pipeline.collector import MarketDataCollector
 from src.data_pipeline.indicators import SimpleTechnicalIndicators
 
+# Multi-agent orchestration
 try:
     from src.agents.technical_agent import TechnicalAnalysisAgent
     from src.agents.momentum_agent import MomentumStrategyAgent
@@ -204,10 +205,22 @@ if scan_button:
                             result.get("indicators", {}),  # indicators (same dict)
                         )
                         result["multi_agent"] = multi
+
+                        # Override single scanner classification with multi-agent decision.
+                        # A stock is "interesting" if the aggregator produced a
+                        # non-HOLD signal - confidence threshold already enforced
+                        # inside aggregator.py, so we trust the output directly.
+                        final_signal = multi.get("final_signal")
+                        if final_signal is not None:
+                            result["interesting"] = (
+                                final_signal.value in ("BUY", "SELL")
+                            )
                     except Exception as e:
                         result["multi_agent"] = None
+                        # Keep single scanner classification on failure
                 else:
                     result["multi_agent"] = None
+                    # No orchestrator - single scanner classification stands
                 results.append(result)
             progress_bar.progress((i + 1) / len(symbols))
         
