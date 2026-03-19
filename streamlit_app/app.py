@@ -42,6 +42,15 @@ try:
 except ImportError:
     MULTI_AGENT_AVAILABLE = False
 
+import os
+
+from src.agents.state import Signal
+from src.risk_management.portfolio import PortfolioRisk, Position
+from src.risk_management.position_sizer import PositionSizer
+from src.risk_management.validators import PreTradeValidator
+from streamlit_app.components.risk_sidebar import render_risk_sidebar
+
+PORTFOLIO_VALUE = float(os.getenv("PORTFOLIO_VALUE", "500000"))
 
 # ─────────────────────────────────────────────
 # Multi-agent UI helpers
@@ -119,6 +128,19 @@ def render_multi_agent_tab(multi_result: dict):
             for e in errors:
                 st.caption(e)
 
+# ─────────────────────────────────────────────
+# Risk engine - initialised once per session
+# ─────────────────────────────────────────────
+
+if "portfolio_risk" not in st.session_state:
+    st.session_state.portfolio_risk = PortfolioRisk(portfolio_value=PORTFOLIO_VALUE)
+
+if "position_sizer" not in st.session_state:
+    st.session_state.position_sizer = PositionSizer(portfolio_value=PORTFOLIO_VALUE)
+
+if "validator" not in st.session_state:
+    st.session_state.validator = PreTradeValidator()
+
 # Page config
 st.set_page_config(
     page_title="AI Trading Scanner",
@@ -134,6 +156,12 @@ else:
 
 # Sidebar - Input
 st.sidebar.header("Scanner Settings")
+
+# Risk sidebar — always visible
+render_risk_sidebar(
+    snapshot=st.session_state.portfolio_risk.snapshot(),
+    sizing_method=os.getenv("SIZING_METHOD", "fixed_fractional"),
+)
 
 # Stock selection
 scan_option = st.sidebar.radio(
@@ -248,7 +276,7 @@ if scan_button:
                 st.subheader(f"{len(interesting_stocks)} Stocks with Clear Signals")
 
                 for i, result in enumerate(interesting_stocks, 1):
-                    with st.expander(f"**{i}. {result['symbol']}** - ₹{result['price']:.2f}", expanded=(i==1)):
+                    with st.expander(f"**{i}. {result['symbol']}** - {result['price']:.2f}", expanded=(i==1)):
 
                         # Create two columns
                         col1, col2 = st.columns([1, 1])
@@ -324,7 +352,7 @@ if scan_button:
                             fig.update_layout(
                                 height=400,
                                 xaxis_title="Date",
-                                yaxis_title="Price (₹)",
+                                yaxis_title="Price (Rupee)",
                                 hovermode='x unified'
                             )
 
@@ -338,6 +366,84 @@ if scan_button:
                         st.markdown("### 🤖 Multi-Agent Analysis")
                         render_multi_agent_tab(result.get("multi_agent"))
 
+                        # Risk assessment — only for BUY signals
+                        multi_agent_data = result.get("multi_agent")
+                        final_signal = multi_agent_data.get("final_signal") if multi_agent_data else None
+                        final_confidence = multi_agent_data.get("final_confidence", 0.0) if multi_agent_data else 0.0
+                        signal_value = final_signal.value if hasattr(final_signal, "value") else str(final_signal)
+
+                        if signal_value == "BUY":
+                            st.markdown("---")
+                            st.markdown("### 🛡️ Risk Assessment")
+
+                            _snap = st.session_state.portfolio_risk.snapshot()
+                            _indicators = result.get("indicators", {})
+                            _entry = result.get("price", 0.0)
+                            _atr = _indicators.get("atr", None)
+                            _stop = (
+                                _entry - (_atr * 1.5)
+                                if (_atr and _atr > 0 and _entry > 0)
+                                else _entry * 0.98
+                            )
+
+                            _size = st.session_state.position_sizer.calculate(
+                                entry_price=_entry,
+                                stop_loss=_stop,
+                                atr=_atr,
+                                confidence=final_confidence,
+                                reward_risk_ratio=2.0,
+                            )
+
+                            _validation = st.session_state.validator.validate(
+                                symbol=result["symbol"],
+                                position_value=_size.position_value,
+                                portfolio_value=_snap.portfolio_value,
+                                open_positions=_snap.open_positions,
+                                confidence=final_confidence,
+                                daily_pnl=_snap.daily_pnl,
+                                sector=None,
+                                sector_exposure=0.0,
+                                capital_at_risk=_size.capital_at_risk,
+                            )
+
+                            r_col1, r_col2, r_col3 = st.columns(3)
+                            with r_col1:
+                                st.metric("Suggested Shares", _size.shares)
+                            with r_col2:
+                                st.metric("Capital at Risk", f"{_size.capital_at_risk:,.0f}")
+                            with r_col3:
+                                st.metric("Position Size", f"{_size.position_value:,.0f}")
+
+                            if _validation.approved:
+                                st.success(
+                                    f"✅ Risk Check Passed "
+                                    f"({_validation.checks_passed}/{_validation.checks_total})"
+                                )
+                            else:
+                                st.error("❌ Risk Check Failed")
+                                for _reason in _validation.rejection_reasons:
+                                    st.caption(f"• {_reason}")
+
+                            with st.expander("Sizing reasoning", expanded=False):
+                                st.caption(_size.reasoning)
+
+                            # Update sidebar with this stock's proposed trade
+                            with st.sidebar:
+                                render_risk_sidebar(
+                                    snapshot=_snap,
+                                    sizing_method=os.getenv("SIZING_METHOD", "fixed_fractional"),
+                                    selected_symbol=result["symbol"],
+                                    proposed_size={
+                                        "shares": _size.shares,
+                                        "position_value": _size.position_value,
+                                        "capital_at_risk": _size.capital_at_risk,
+                                        "fraction_used": _size.fraction_used,
+                                        "reasoning": _size.reasoning,
+                                        "approved": _validation.approved,
+                                        "rejection_reasons": _validation.rejection_reasons,
+                                    },
+                                )
+
             else:
                 st.info("No stocks with clear signals found.")
 
@@ -347,7 +453,7 @@ if scan_button:
                 st.caption("These stocks don't show strong technical patterns right now")
 
                 for i, result in enumerate(not_interesting_stocks, 1):
-                    with st.expander(f"**{i}. {result['symbol']}** - ₹{result['price']:.2f}"):
+                    with st.expander(f"**{i}. {result['symbol']}** - {result['price']:.2f}"):
 
                         # Create two columns
                         col1, col2 = st.columns([1, 1])

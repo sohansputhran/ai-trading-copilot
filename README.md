@@ -94,11 +94,19 @@ REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
 * ✅ **Multi-agent dashboard** - Per-agent signal cards, confidence bars, and full reasoning chain in UI
 * ✅ **Multi-agent classification** - "Interesting" tab driven by 3-agent consensus, not single scanner
 
+**Sprint 3 - Complete ✅**
+
+* ✅ **Position sizing engine** - Fixed fractional (default), Kelly Criterion, and ATR-based sizing
+* ✅ **Pre-trade validator** - Hard limits gate: 5% max position, 2% daily loss circuit breaker, 5 max open positions, 30% sector cap
+* ✅ **Portfolio risk aggregator** - Tracks open positions, sector exposure, and daily P&L in real time
+* ✅ **Risk sidebar** - Live portfolio metrics panel in Streamlit: deployment %, risk %, position slots, sector exposure bars
+* ✅ **Per-trade risk verdict** - Every BUY signal shows suggested shares, capital at risk, and pass/fail verdict in the dashboard
+* ✅ **Configurable sizing** - Sizing method and risk parameters set via environment variables, no code changes needed
+
 ## 🔜 Upcoming Sprints
 
-* **Sprint 3:** Risk management engine (Kelly Criterion, position sizing)
-* **Sprint 4:** Paper trading via Upstox API
-* **Sprint 5:** Trade journal & analytics (PostgreSQL)
+* **Sprint 4:** Paper trading simulator (order lifecycle, idempotency, PostgreSQL persistence)
+* **Sprint 5:** Trade journal & analytics (performance metrics, equity curves)
 * **Sprint 6:** Production deployment (Docker, CI/CD)
 
 ---
@@ -327,9 +335,9 @@ except:
 ## 🧪 Testing
 
 ### Unit tests — no external dependencies needed
-Tests state schema, agent signal logic, and aggregator math. Runs instantly with just `pytest` and `structlog`.
+Tests state schema, agent signal logic, aggregator math, and all risk engine logic. Runs instantly with just `pytest` and `structlog`.
 ```bash
-pytest tests/test_agents.py -v
+pytest tests/test_agents.py tests/test_risk.py -v
 ```
 
 ### Integration tests — requires LangGraph
@@ -362,13 +370,20 @@ ai-trading-copilot/
 │   ├── data_pipeline/
 │   │   ├── collector.py            # Fetches stock data (Yahoo Finance)
 │   │   └── indicators.py           # Technical indicators (manual calculation)
+│   ├── risk_management/
+│   │   ├── position_sizer.py       # Kelly / fixed fractional / ATR sizing
+│   │   ├── validators.py           # Pre-trade hard limit gate
+│   │   └── portfolio.py            # Open position tracker + portfolio snapshot
 │   └── utils/
 │       └── config.py               # Loads environment variables
 ├── streamlit_app/
-│   └── app.py                      # Dashboard UI
+│   ├── app.py                      # Dashboard UI
+│   └── components/
+│       └── risk_sidebar.py         # Portfolio risk sidebar component
 ├── tests/
 │   ├── test_agents.py              # Unit tests (no external deps)
-│   └── test_orchestrator.py        # Integration tests (requires LangGraph)
+│   ├── test_orchestrator.py        # Integration tests (requires LangGraph)
+│   └── test_risk.py                # Risk engine unit tests (no external deps)
 ├── requirements.txt                # Python dependencies
 ├── .env.example                    # Environment template
 └── README.md                       # This file
@@ -383,21 +398,23 @@ ai-trading-copilot/
 This project showcases:
 
 ✅ **AI Engineering** - Multi-agent systems, prompt engineering, model selection & fallback strategies  
+✅ **Risk Management** - Kelly Criterion, position sizing algorithms, circuit breakers, portfolio-level constraints  
 ✅ **Production Code** - Error handling, fallbacks, logging, type hints, modular design  
 ✅ **Data Engineering** - Real-time pipelines, caching strategies, data validation  
 ✅ **Full-Stack Development** - Backend (Python), Frontend (Streamlit), API integration  
 ✅ **Problem Solving** - Built free AI solution when paid APIs weren't viable  
-✅ **Domain Knowledge** - Financial indicators, technical analysis, trading concepts  
+✅ **Domain Knowledge** - Financial indicators, technical analysis, risk-reward frameworks  
 
 **Tech Stack:** Python, LangChain, LangGraph, HuggingFace, Streamlit, Pandas, NumPy, Plotly, Git
 
 ### Learning Journey
 
-Built over **4 weeks** as part of 12-week AI Engineering learning project:
+Built over **6 weeks** as part of 12-week AI Engineering learning project:
 - Sprint 1: Real-time data pipelines, technical indicators, first LangGraph agent
 - Sprint 2: Multi-agent orchestration, parallel StateGraph, confidence scoring, explainable AI
+- Sprint 3: Risk algorithms (Kelly Criterion, fixed fractional, ATR-based sizing), pre-trade validation, portfolio-level circuit breakers
 - Implemented production-grade error handling and fallback chains throughout
-- 21 passing tests (unit + integration) covering state, agents, and orchestration
+- 57 passing tests (unit + integration) covering state, agents, orchestration, and risk logic
 
 ---
 
@@ -472,17 +489,17 @@ Contributions welcome! This is a learning project, but improvements are apprecia
 - [x] Confidence scoring + agreement penalty aggregator
 - [x] Multi-agent classification (overrides Sprint 1 scanner)
 
-### Sprint 3: Risk Management (Weeks 5-6)
-- [ ] Kelly Criterion position sizing
-- [ ] Pre-trade validation
-- [ ] Portfolio risk aggregator
-- [ ] Risk dashboard
+### Sprint 3: Risk Management (Weeks 5-6) ✅
+- [x] Position sizing engine (fixed fractional, Kelly, ATR-based)
+- [x] Pre-trade validator with hard limits (5% position, 2% daily loss, 5 max positions, 30% sector)
+- [x] Portfolio risk aggregator (open positions, sector exposure, daily P&L)
+- [x] Risk sidebar panel in Streamlit dashboard
 
 ### Sprint 4: Paper Trading (Weeks 7-8)
-- [ ] Upstox API integration
-- [ ] Order management system
-- [ ] Paper trading simulator
-- [ ] Real-time order tracking
+- [ ] Paper trading simulator (order lifecycle state machine)
+- [ ] Order manager with idempotency guarantee
+- [ ] PostgreSQL persistence for trades
+- [ ] Auto-trade + manual override toggle in dashboard
 
 ### Sprint 5: Trade Journal (Weeks 9-10)
 - [ ] PostgreSQL database
