@@ -19,8 +19,8 @@ import pytest
 # Skip entire file gracefully if langgraph not installed
 langgraph = pytest.importorskip("langgraph", reason="langgraph not installed")
 
-from src.agents.orchestrator import MultiAgentOrchestrator
-from src.agents.state import AgentAnalysis, Signal, TradingState
+from src.agents.orchestrator import MultiAgentOrchestrator  # noqa: E402
+from src.agents.state import AgentAnalysis, Signal, TradingState  # noqa: E402
 
 # ─────────────────────────────────────────────
 # Mock agents

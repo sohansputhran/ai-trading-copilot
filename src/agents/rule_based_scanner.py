@@ -13,14 +13,6 @@ RULES:
 - Neutral: Nothing significant
 """
 
-import sys
-from pathlib import Path
-
-# Add project root to path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
-
-
 from src.data_pipeline.collector import MarketDataCollector
 from src.data_pipeline.indicators_simple import SimpleTechnicalIndicators
 
