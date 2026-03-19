@@ -49,6 +49,7 @@ class Position:
         entry_time:      When the trade was opened
         strategy:        Which agent/strategy generated this signal
     """
+
     symbol: str
     entry_price: float
     stop_loss: float
@@ -80,13 +81,14 @@ class PortfolioSnapshot:
     This is what the PreTradeValidator receives to make decisions.
     Returned by PortfolioRisk.snapshot().
     """
+
     portfolio_value: float
     open_positions: int
-    total_position_value: float        # Sum of all position costs
-    total_capital_at_risk: float       # Sum of all stop-loss risks
-    daily_pnl: float                   # Today's realized P&L
-    sector_exposures: dict[str, float] # {sector: total_position_value_in_sector}
-    available_capital: float           # portfolio_value - total_position_value
+    total_position_value: float  # Sum of all position costs
+    total_capital_at_risk: float  # Sum of all stop-loss risks
+    daily_pnl: float  # Today's realized P&L
+    sector_exposures: dict[str, float]  # {sector: total_position_value_in_sector}
+    available_capital: float  # portfolio_value - total_position_value
 
     @property
     def total_deployed_pct(self) -> float:
@@ -157,7 +159,7 @@ class PortfolioRisk:
             raise ValueError(f"Portfolio value must be positive, got {portfolio_value}")
 
         self.portfolio_value = portfolio_value
-        self._positions: dict[str, Position] = {}   # symbol → Position
+        self._positions: dict[str, Position] = {}  # symbol → Position
         self._daily_realized_pnl: float = 0.0
         self._trade_date: date = date.today()
 
@@ -287,11 +289,7 @@ class PortfolioRisk:
 
     def get_sector_exposure(self, sector: str) -> float:
         """Return current portfolio exposure (in rupees) to the given sector."""
-        return sum(
-            p.position_value
-            for p in self._positions.values()
-            if p.sector == sector
-        )
+        return sum(p.position_value for p in self._positions.values() if p.sector == sector)
 
     def get_position(self, symbol: str) -> Position | None:
         """Return open position for symbol, or None."""

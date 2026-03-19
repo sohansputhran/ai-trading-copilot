@@ -43,7 +43,7 @@ class MarketScanner:
         # Uses the new router.huggingface.co API via chat_completion()
         # Try multiple models in case one is unavailable
         models_to_try = [
-            ("meta-llama/Meta-Llama-3-8B-Instruct", "Llama-3-8B"),      # Confirmed working
+            ("meta-llama/Meta-Llama-3-8B-Instruct", "Llama-3-8B"),  # Confirmed working
             ("mistralai/Mistral-7B-Instruct-v0.3", "Mistral-7B"),
             ("microsoft/Phi-3-mini-4k-instruct", "Phi-3-mini"),
             ("HuggingFaceH4/zephyr-7b-beta", "Zephyr-7B"),
@@ -55,15 +55,10 @@ class MarketScanner:
         for repo_id, model_name in models_to_try:
             try:
                 print(f"⏳ Trying to load {model_name}...")
-                client = InferenceClient(
-                    model=repo_id,
-                    token=HUGGINGFACE_API_TOKEN,
-                    timeout=30
-                )
+                client = InferenceClient(model=repo_id, token=HUGGINGFACE_API_TOKEN, timeout=30)
                 # Quick connectivity test
                 test_resp = client.chat_completion(
-                    messages=[{"role": "user", "content": "Reply with just: OK"}],
-                    max_tokens=5
+                    messages=[{"role": "user", "content": "Reply with just: OK"}], max_tokens=5
                 )
                 _ = test_resp.choices[0].message.content
                 self.llm_client = client
@@ -120,18 +115,18 @@ class MarketScanner:
                 if not self.llm_client:
                     raise RuntimeError("No AI client available")
 
-                rsi = latest['rsi']
-                macd = latest['macd']
-                vol = latest['volume_ratio']
+                rsi = latest["rsi"]
+                macd = latest["macd"]
+                vol = latest["volume_ratio"]
 
                 # Pre-compute whether ANY trigger condition is met
                 triggers = []
                 if rsi < 30:
-                     triggers.append(f"RSI={rsi:.1f} is OVERSOLD (<30)")
+                    triggers.append(f"RSI={rsi:.1f} is OVERSOLD (<30)")
                 if rsi > 70:
-                     triggers.append(f"RSI={rsi:.1f} is OVERBOUGHT (>70)")
+                    triggers.append(f"RSI={rsi:.1f} is OVERBOUGHT (>70)")
                 if vol > 2.0 and 40 < rsi < 60:
-                     triggers.append(f"Volume={vol:.1f}x is HIGH with neutral RSI")
+                    triggers.append(f"Volume={vol:.1f}x is HIGH with neutral RSI")
                 if macd > 5.0 and 45 < rsi < 65:
                     triggers.append(f"MACD={macd:.1f} is STRONG with healthy RSI")
                 hint = f"Pre-analysis: {', '.join(triggers) if triggers else 'NO trigger conditions met — likely Neutral'}."
@@ -149,15 +144,17 @@ class MarketScanner:
                 response = self.llm_client.chat_completion(
                     messages=[
                         {"role": "system", "content": self.system_prompt},
-                        {"role": "user", "content": user_message}
+                        {"role": "user", "content": user_message},
                     ],
                     max_tokens=200,
-                    temperature=0.3
+                    temperature=0.3,
                 )
 
                 # Step 5: Parse the model's response
                 analysis = response.choices[0].message.content.strip()
-                is_interesting = "INTERESTING: YES" in analysis.upper() or "INTERESTING:YES" in analysis.upper()
+                is_interesting = (
+                    "INTERESTING: YES" in analysis.upper() or "INTERESTING:YES" in analysis.upper()
+                )
                 print(f"   AI analysis complete ({self.llm_model})")
 
             except Exception as ai_error:
@@ -168,12 +165,12 @@ class MarketScanner:
 
             # Always return result with reasoning
             return {
-                'symbol': symbol,
-                'price': latest['price'],
-                'rsi': latest['rsi'],
-                'analysis': analysis,
-                'indicators': latest,
-                'interesting': is_interesting  # Flag to indicate if picked
+                "symbol": symbol,
+                "price": latest["price"],
+                "rsi": latest["rsi"],
+                "analysis": analysis,
+                "indicators": latest,
+                "interesting": is_interesting,  # Flag to indicate if picked
             }
 
         except Exception as e:
@@ -190,44 +187,62 @@ class MarketScanner:
         Returns:
             Tuple of (is_interesting: bool, analysis: str)
         """
-        rsi = indicators['rsi']
-        macd = indicators['macd']
-        volume_ratio = indicators['volume_ratio']
+        rsi = indicators["rsi"]
+        macd = indicators["macd"]
+        volume_ratio = indicators["volume_ratio"]
 
         # Rule 1: Oversold reversal
         if rsi < 30 and macd > 0:
-            return True, f"""INTERESTING: Yes
+            return (
+                True,
+                f"""INTERESTING: Yes
 SIGNAL: Oversold Reversal
-REASON: RSI {rsi:.1f} (oversold) + positive MACD {macd:.2f} suggests potential bounce."""
+REASON: RSI {rsi:.1f} (oversold) + positive MACD {macd:.2f} suggests potential bounce.""",
+            )
 
         # Rule 2: Extreme oversold
         if rsi < 25:
-            return True, f"""INTERESTING: Yes
+            return (
+                True,
+                f"""INTERESTING: Yes
 SIGNAL: Extreme Oversold
-REASON: RSI {rsi:.1f} shows heavy selling. Mean reversion likely."""
+REASON: RSI {rsi:.1f} shows heavy selling. Mean reversion likely.""",
+            )
 
         # Rule 3: Overbought
         if rsi > 70:
-            return True, f"""INTERESTING: Yes
+            return (
+                True,
+                f"""INTERESTING: Yes
 SIGNAL: Overbought
-REASON: RSI {rsi:.1f} indicates extended run. Pullback possible."""
+REASON: RSI {rsi:.1f} indicates extended run. Pullback possible.""",
+            )
 
         # Rule 4: Volume breakout
         if volume_ratio > 2.0 and 40 < rsi < 60:
-            return True, f"""INTERESTING: Yes
+            return (
+                True,
+                f"""INTERESTING: Yes
 SIGNAL: Volume Breakout
-REASON: Volume {volume_ratio:.1f}x average with neutral RSI shows strong interest."""
+REASON: Volume {volume_ratio:.1f}x average with neutral RSI shows strong interest.""",
+            )
 
         # Rule 5: Bullish momentum
         if macd > 5 and 45 < rsi < 65:
-            return True, f"""INTERESTING: Yes
+            return (
+                True,
+                f"""INTERESTING: Yes
 SIGNAL: Bullish Momentum
-REASON: Positive MACD {macd:.2f} + healthy RSI {rsi:.1f} = uptrend."""
+REASON: Positive MACD {macd:.2f} + healthy RSI {rsi:.1f} = uptrend.""",
+            )
 
         # No clear signal
-        return False, f"""INTERESTING: No
+        return (
+            False,
+            f"""INTERESTING: No
 SIGNAL: Neutral
-REASON: RSI {rsi:.1f}, MACD {macd:.2f}, Volume {volume_ratio:.1f}x. No clear setup."""
+REASON: RSI {rsi:.1f}, MACD {macd:.2f}, Volume {volume_ratio:.1f}x. No clear setup.""",
+        )
 
     def scan(self, symbols: list[str]) -> list[dict]:
         """
@@ -239,9 +254,9 @@ REASON: RSI {rsi:.1f}, MACD {macd:.2f}, Volume {volume_ratio:.1f}x. No clear set
         Returns:
             List of dicts with analysis for ALL stocks
         """
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print(f"Starting market scan for {len(symbols)} stocks")
-        print("="*60)
+        print("=" * 60)
 
         results = []
 
@@ -250,27 +265,29 @@ REASON: RSI {rsi:.1f}, MACD {macd:.2f}, Volume {volume_ratio:.1f}x. No clear set
             if result:  # Will always be True now (we return all results)
                 results.append(result)
 
-        interesting_count = sum(1 for r in results if r.get('interesting', False))
+        interesting_count = sum(1 for r in results if r.get("interesting", False))
 
-        print("\n" + "="*60)
-        print(f"Scan complete! {interesting_count} interesting, {len(results) - interesting_count} not interesting")
-        print("="*60)
+        print("\n" + "=" * 60)
+        print(
+            f"Scan complete! {interesting_count} interesting, {len(results) - interesting_count} not interesting"
+        )
+        print("=" * 60)
 
         return results
 
 
 # Nifty 50 stocks (sample list)
 NIFTY_50_SAMPLE: list[str] = [
-    'RELIANCE.NS',
-    'TCS.NS',
-    'HDFCBANK.NS',
-    'INFY.NS',
-    'ICICIBANK.NS',
-    'HINDUNILVR.NS',
-    'ITC.NS',
-    'SBIN.NS',
-    'BHARTIARTL.NS',
-    'KOTAKBANK.NS'
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "ICICIBANK.NS",
+    "HINDUNILVR.NS",
+    "ITC.NS",
+    "SBIN.NS",
+    "BHARTIARTL.NS",
+    "KOTAKBANK.NS",
 ]
 
 
@@ -280,9 +297,9 @@ if __name__ == "__main__":
     Test script - run with: python src/agents/scanner_agent.py
     """
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Market Scanner Agent - Test Run")
-    print("="*60)
+    print("=" * 60)
 
     # Create scanner
     scanner = MarketScanner()
@@ -297,18 +314,18 @@ if __name__ == "__main__":
 
     # Display results
     if results:
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("INTERESTING STOCKS FOUND:")
-        print("="*60)
+        print("=" * 60)
 
         for i, result in enumerate(results, 1):
             print(f"\n{i}. {result['symbol']}")
             print(f"   Price: {result['price']:.2f}")
             print(f"   RSI: {result['rsi']:.2f}")
             print("\n   AI Analysis:")
-            print("   " + "-"*56)
+            print("   " + "-" * 56)
             # Print analysis indented
-            for line in result['analysis'].split('\n'):
+            for line in result["analysis"].split("\n"):
                 if line.strip():
                     print(f"   {line}")
             print()
@@ -316,6 +333,6 @@ if __name__ == "__main__":
         print("\nNo interesting stocks found in this scan.")
         print("   (This is normal - not every stock has clear signals)")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Scanner test complete!")
-    print("="*60)
+    print("=" * 60)

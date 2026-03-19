@@ -26,10 +26,12 @@ from src.risk_management.validators import (
 # Fixtures
 # ===========================================================================
 
+
 @pytest.fixture
 def sizer_fixed() -> PositionSizer:
     """PositionSizer with fixed fractional method, 500,000 portfolio."""
     import os
+
     os.environ["SIZING_METHOD"] = "fixed_fractional"
     os.environ["RISK_PER_TRADE_PCT"] = "1.0"
     return PositionSizer(portfolio_value=500_000)
@@ -38,6 +40,7 @@ def sizer_fixed() -> PositionSizer:
 @pytest.fixture
 def sizer_kelly() -> PositionSizer:
     import os
+
     os.environ["SIZING_METHOD"] = "kelly"
     os.environ["RISK_PER_TRADE_PCT"] = "1.0"
     os.environ["KELLY_FRACTION"] = "0.5"
@@ -48,6 +51,7 @@ def sizer_kelly() -> PositionSizer:
 @pytest.fixture
 def sizer_atr() -> PositionSizer:
     import os
+
     os.environ["SIZING_METHOD"] = "atr_based"
     os.environ["RISK_PER_TRADE_PCT"] = "1.0"
     os.environ["ATR_RISK_MULTIPLIER"] = "1.5"
@@ -80,6 +84,7 @@ def sample_position() -> Position:
 # ===========================================================================
 # PositionSizer Tests — Fixed Fractional
 # ===========================================================================
+
 
 class TestFixedFractionalSizer:
     def test_basic_calculation(self, sizer_fixed: PositionSizer) -> None:
@@ -141,7 +146,7 @@ class TestKellySizer:
         size = sizer_kelly.calculate(
             entry_price=2500.0,
             stop_loss=2450.0,
-            confidence=0.30,   # low confidence
+            confidence=0.30,  # low confidence
             reward_risk_ratio=0.5,  # terrible R:R
         )
         # Either 0 shares or falls back to fixed fractional
@@ -212,19 +217,20 @@ class TestSizerPortfolioEdgeCases:
 # PreTradeValidator Tests
 # ===========================================================================
 
+
 class TestPreTradeValidator:
 
     def _approved_kwargs(self, **overrides) -> dict:
         """Base kwargs that should produce an APPROVED result."""
         base = dict(
             symbol="RELIANCE",
-            position_value=50_000.0,       # 10% of portfolio? No — 50k/500k = 10%... fix:
+            position_value=50_000.0,  # 10% of portfolio? No — 50k/500k = 10%... fix:
             portfolio_value=500_000.0,
             open_positions=2,
             confidence=0.75,
             daily_pnl=0.0,
             sector="Energy",
-            sector_exposure=50_000.0,      # existing Energy exposure
+            sector_exposure=50_000.0,  # existing Energy exposure
         )
         # position_value must be ≤ 5% of 500k = 25k
         base["position_value"] = 20_000.0
@@ -239,53 +245,55 @@ class TestPreTradeValidator:
 
     def test_position_too_large(self, validator: PreTradeValidator) -> None:
         """Position value > 5% of portfolio -> rejected."""
-        result = validator.validate(**self._approved_kwargs(
-            position_value=30_000.0,   # 6% of 500k
-            portfolio_value=500_000.0,
-        ))
+        result = validator.validate(
+            **self._approved_kwargs(
+                position_value=30_000.0,  # 6% of 500k
+                portfolio_value=500_000.0,
+            )
+        )
         assert result.approved is False
         assert any("5%" in r or "position" in r.lower() for r in result.rejection_reasons)
 
     def test_daily_loss_circuit_breaker(self, validator: PreTradeValidator) -> None:
         """Daily loss ≥ 2% -> circuit breaker fires."""
-        result = validator.validate(**self._approved_kwargs(
-            daily_pnl=-10_500.0,   # 2.1% of 500k
-            portfolio_value=500_000.0,
-        ))
+        result = validator.validate(
+            **self._approved_kwargs(
+                daily_pnl=-10_500.0,  # 2.1% of 500k
+                portfolio_value=500_000.0,
+            )
+        )
         assert result.approved is False
         assert any("circuit breaker" in r.lower() for r in result.rejection_reasons)
 
     def test_max_positions_reached(self, validator: PreTradeValidator) -> None:
         """5 open positions -> rejected."""
-        result = validator.validate(**self._approved_kwargs(
-            open_positions=MAX_OPEN_POSITIONS
-        ))
+        result = validator.validate(**self._approved_kwargs(open_positions=MAX_OPEN_POSITIONS))
         assert result.approved is False
         assert any("position" in r.lower() for r in result.rejection_reasons)
 
     def test_sector_exposure_exceeded(self, validator: PreTradeValidator) -> None:
         """Adding position would push sector above 30%."""
-        result = validator.validate(**self._approved_kwargs(
-            sector_exposure=140_000.0,  # existing Energy = 28%
-            position_value=15_000.0,    # adding 3% → 31% > 30% limit
-            portfolio_value=500_000.0,
-        ))
+        result = validator.validate(
+            **self._approved_kwargs(
+                sector_exposure=140_000.0,  # existing Energy = 28%
+                position_value=15_000.0,  # adding 3% → 31% > 30% limit
+                portfolio_value=500_000.0,
+            )
+        )
         assert result.approved is False
         assert any("sector" in r.lower() for r in result.rejection_reasons)
 
     def test_low_confidence_rejected(self, validator: PreTradeValidator) -> None:
         """Confidence below threshold -> rejected."""
-        result = validator.validate(**self._approved_kwargs(
-            confidence=MIN_CONFIDENCE_THRESHOLD - 0.01
-        ))
+        result = validator.validate(
+            **self._approved_kwargs(confidence=MIN_CONFIDENCE_THRESHOLD - 0.01)
+        )
         assert result.approved is False
         assert any("confidence" in r.lower() for r in result.rejection_reasons)
 
     def test_exact_threshold_confidence_approved(self, validator: PreTradeValidator) -> None:
         """Confidence exactly at threshold -> approved."""
-        result = validator.validate(**self._approved_kwargs(
-            confidence=MIN_CONFIDENCE_THRESHOLD
-        ))
+        result = validator.validate(**self._approved_kwargs(confidence=MIN_CONFIDENCE_THRESHOLD))
         assert result.approved is True
 
     def test_zero_portfolio_rejected(self, validator: PreTradeValidator) -> None:
@@ -302,11 +310,11 @@ class TestPreTradeValidator:
         """Multiple violations -> all reasons returned."""
         result = validator.validate(
             symbol="BAD",
-            position_value=100_000.0,   # too large
+            position_value=100_000.0,  # too large
             portfolio_value=500_000.0,
             open_positions=MAX_OPEN_POSITIONS,  # max positions
-            confidence=0.30,            # too low
-            daily_pnl=-15_000.0,        # circuit breaker
+            confidence=0.30,  # too low
+            daily_pnl=-15_000.0,  # circuit breaker
             sector="Energy",
             sector_exposure=200_000.0,  # sector cap
         )
@@ -323,10 +331,12 @@ class TestPreTradeValidator:
 
     def test_daily_loss_exactly_at_limit(self, validator: PreTradeValidator) -> None:
         """Daily loss exactly at 2% limit -> circuit breaker fires."""
-        result = validator.validate(**self._approved_kwargs(
-            daily_pnl=-(500_000.0 * MAX_DAILY_LOSS_PCT),
-            portfolio_value=500_000.0,
-        ))
+        result = validator.validate(
+            **self._approved_kwargs(
+                daily_pnl=-(500_000.0 * MAX_DAILY_LOSS_PCT),
+                portfolio_value=500_000.0,
+            )
+        )
         assert result.approved is False
 
     def test_daily_profit_no_circuit_breaker(self, validator: PreTradeValidator) -> None:
@@ -338,6 +348,7 @@ class TestPreTradeValidator:
 # ===========================================================================
 # PortfolioRisk Tests
 # ===========================================================================
+
 
 class TestPortfolioRisk:
 
@@ -381,24 +392,28 @@ class TestPortfolioRisk:
     def test_max_positions_enforced(self, portfolio: PortfolioRisk) -> None:
         """Adding beyond MAX_OPEN_POSITIONS raises ValueError."""
         for i in range(MAX_OPEN_POSITIONS):
-            portfolio.add_position(Position(
-                symbol=f"STOCK{i}",
-                entry_price=100.0,
-                stop_loss=95.0,
-                shares=10,
-                position_value=1_000.0,
-                capital_at_risk=50.0,
-                sector="Tech",
-            ))
+            portfolio.add_position(
+                Position(
+                    symbol=f"STOCK{i}",
+                    entry_price=100.0,
+                    stop_loss=95.0,
+                    shares=10,
+                    position_value=1_000.0,
+                    capital_at_risk=50.0,
+                    sector="Tech",
+                )
+            )
         with pytest.raises(ValueError, match="maximum"):
-            portfolio.add_position(Position(
-                symbol="OVERFLOWSTOCK",
-                entry_price=100.0,
-                stop_loss=95.0,
-                shares=10,
-                position_value=1_000.0,
-                capital_at_risk=50.0,
-            ))
+            portfolio.add_position(
+                Position(
+                    symbol="OVERFLOWSTOCK",
+                    entry_price=100.0,
+                    stop_loss=95.0,
+                    shares=10,
+                    position_value=1_000.0,
+                    capital_at_risk=50.0,
+                )
+            )
 
     def test_sector_exposure_tracking(
         self, portfolio: PortfolioRisk, sample_position: Position
@@ -407,9 +422,7 @@ class TestPortfolioRisk:
         snap = portfolio.snapshot()
         assert snap.sector_exposures.get("Energy", 0.0) == pytest.approx(100_000.0, rel=0.01)
 
-    def test_get_position(
-        self, portfolio: PortfolioRisk, sample_position: Position
-    ) -> None:
+    def test_get_position(self, portfolio: PortfolioRisk, sample_position: Position) -> None:
         portfolio.add_position(sample_position)
         pos = portfolio.get_position("RELIANCE")
         assert pos is not None
@@ -418,16 +431,12 @@ class TestPortfolioRisk:
     def test_get_position_missing_returns_none(self, portfolio: PortfolioRisk) -> None:
         assert portfolio.get_position("NONEXISTENT") is None
 
-    def test_available_capital(
-        self, portfolio: PortfolioRisk, sample_position: Position
-    ) -> None:
+    def test_available_capital(self, portfolio: PortfolioRisk, sample_position: Position) -> None:
         portfolio.add_position(sample_position)
         snap = portfolio.snapshot()
         assert snap.available_capital == pytest.approx(400_000.0, rel=0.01)
 
-    def test_deployed_pct(
-        self, portfolio: PortfolioRisk, sample_position: Position
-    ) -> None:
+    def test_deployed_pct(self, portfolio: PortfolioRisk, sample_position: Position) -> None:
         portfolio.add_position(sample_position)
         snap = portfolio.snapshot()
         assert snap.total_deployed_pct == pytest.approx(0.20, rel=0.01)  # 100k/500k
@@ -436,9 +445,7 @@ class TestPortfolioRisk:
         with pytest.raises(ValueError, match="positive"):
             PortfolioRisk(portfolio_value=0)
 
-    def test_loss_pnl_tracked(
-        self, portfolio: PortfolioRisk, sample_position: Position
-    ) -> None:
+    def test_loss_pnl_tracked(self, portfolio: PortfolioRisk, sample_position: Position) -> None:
         portfolio.add_position(sample_position)
         portfolio.close_position("RELIANCE", exit_price=2400.0)
         snap = portfolio.snapshot()
@@ -450,6 +457,7 @@ class TestPortfolioRisk:
 # Integration: Full Risk Pipeline
 # ===========================================================================
 
+
 class TestRiskPipeline:
     """
     End-to-end: sizer → validator → portfolio.
@@ -458,6 +466,7 @@ class TestRiskPipeline:
 
     def test_approved_trade_full_pipeline(self) -> None:
         import os
+
         os.environ["SIZING_METHOD"] = "fixed_fractional"
         os.environ["RISK_PER_TRADE_PCT"] = "1.0"
 

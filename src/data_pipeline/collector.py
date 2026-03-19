@@ -16,7 +16,6 @@ HOW TO USE:
     print(data.head())  # Show first 5 rows
 """
 
-
 import pandas as pd
 import yfinance as yf
 
@@ -29,12 +28,7 @@ class MarketDataCollector:
     Example: "RELIANCE.NS" for Reliance on NSE
     """
 
-    def fetch_data(
-        self,
-        symbol: str,
-        period: str = "1mo",
-        interval: str = "1d"
-    ) -> pd.DataFrame:
+    def fetch_data(self, symbol: str, period: str = "1mo", interval: str = "1d") -> pd.DataFrame:
         """
         Fetch historical data for a stock.
 
@@ -83,7 +77,7 @@ class MarketDataCollector:
         if df.empty:
             raise ValueError(f"No data for {symbol}")
 
-        return df['Close'].iloc[-1]
+        return df["Close"].iloc[-1]
 
 
 # Test the collector
@@ -92,9 +86,9 @@ if __name__ == "__main__":
     Test script - run with: python -m src.data_pipeline.collector
     """
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Testing Market Data Collector")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     collector = MarketDataCollector()
 
@@ -105,11 +99,11 @@ if __name__ == "__main__":
     print(f"\nData shape: {data.shape[0]} days, {data.shape[1]} columns")
 
     # Test 2: Get current price
-    print("\n" + "-"*60)
+    print("\n" + "-" * 60)
     print("Test 2: Current price")
     price = collector.fetch_current_price("RELIANCE.NS")
     print(f"RELIANCE current price: ₹{price:.2f}")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Market Data Collector working!")
-    print("="*60)
+    print("=" * 60)

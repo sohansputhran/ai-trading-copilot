@@ -112,10 +112,10 @@ def build_orchestrator(
         except Exception as e:
             log.error("node_failed", error=str(e))
             return {
-                "final_signal":     "HOLD",
+                "final_signal": "HOLD",
                 "final_confidence": 0.0,
-                "final_reasoning":  f"Aggregator failed: {str(e)}. Defaulting to HOLD.",
-                "agent_agreement":  0.0,
+                "final_reasoning": f"Aggregator failed: {str(e)}. Defaulting to HOLD.",
+                "agent_agreement": 0.0,
                 "errors": state["errors"] + [f"aggregator: {str(e)}"],
             }
 
@@ -125,9 +125,9 @@ def build_orchestrator(
 
     # Add all nodes
     graph.add_node("technical_agent", run_technical)
-    graph.add_node("momentum_agent",  run_momentum)
-    graph.add_node("breakout_agent",  run_breakout)
-    graph.add_node("aggregator",      run_aggregator)
+    graph.add_node("momentum_agent", run_momentum)
+    graph.add_node("breakout_agent", run_breakout)
+    graph.add_node("aggregator", run_aggregator)
 
     # Fan-out: START → all three agents in parallel
     graph.add_edge(START, "technical_agent")
@@ -137,8 +137,8 @@ def build_orchestrator(
     # Fan-in: all three agents → aggregator
     # LangGraph automatically waits for all incoming edges before running a node
     graph.add_edge("technical_agent", "aggregator")
-    graph.add_edge("momentum_agent",  "aggregator")
-    graph.add_edge("breakout_agent",  "aggregator")
+    graph.add_edge("momentum_agent", "aggregator")
+    graph.add_edge("breakout_agent", "aggregator")
 
     # Aggregator is the terminal node
     graph.add_edge("aggregator", END)
@@ -149,6 +149,7 @@ def build_orchestrator(
 # ─────────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────────
+
 
 class MultiAgentOrchestrator:
     """
@@ -165,7 +166,7 @@ class MultiAgentOrchestrator:
 
     def __init__(self, technical_agent, momentum_agent, breakout_agent):
         self.graph = build_orchestrator(technical_agent, momentum_agent, breakout_agent)
-        self.log   = logger.bind(component="orchestrator")
+        self.log = logger.bind(component="orchestrator")
 
     def analyze(
         self,

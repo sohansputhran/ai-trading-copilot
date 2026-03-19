@@ -31,6 +31,7 @@ logger = structlog.get_logger()
 
 class SizingMethod(StrEnum):
     """Which position sizing algorithm to use."""
+
     KELLY = "kelly"
     FIXED_FRACTIONAL = "fixed_fractional"
     ATR_BASED = "atr_based"
@@ -51,6 +52,7 @@ class PositionSize:
         method:          Which sizing method produced this result
         reasoning:       Human-readable explanation (useful for dashboard + journal)
     """
+
     shares: int
     capital_at_risk: float
     position_value: float

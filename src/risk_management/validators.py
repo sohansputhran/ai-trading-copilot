@@ -37,10 +37,10 @@ logger = structlog.get_logger()
 # ---------------------------------------------------------------------------
 # Hard Limits — DO NOT make these environment variables
 # ---------------------------------------------------------------------------
-MAX_POSITION_PCT = 0.05          # 5%: max capital in any single trade
-MAX_DAILY_LOSS_PCT = 0.02        # 2%: circuit breaker - stop trading for the day
-MAX_OPEN_POSITIONS = 5           # hard cap on concurrent open trades
-MAX_SECTOR_EXPOSURE_PCT = 0.30   # 30%: max portfolio in any one sector
+MAX_POSITION_PCT = 0.05  # 5%: max capital in any single trade
+MAX_DAILY_LOSS_PCT = 0.02  # 2%: circuit breaker - stop trading for the day
+MAX_OPEN_POSITIONS = 5  # hard cap on concurrent open trades
+MAX_SECTOR_EXPOSURE_PCT = 0.30  # 30%: max portfolio in any one sector
 MIN_CONFIDENCE_THRESHOLD = 0.60  # Matches aggregator's MIN_CONFIDENCE_TO_TRADE
 
 
@@ -58,6 +58,7 @@ class ValidationResult:
         checks_passed:      How many individual checks passed
         checks_total:       Total checks run
     """
+
     approved: bool
     rejection_reasons: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)

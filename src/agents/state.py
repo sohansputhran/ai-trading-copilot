@@ -21,24 +21,28 @@ from typing import Any, TypedDict
 # Enums
 # ─────────────────────────────────────────────
 
+
 class Signal(StrEnum):
     """Trading signal. String enum so it serializes cleanly to JSON."""
-    BUY  = "BUY"
+
+    BUY = "BUY"
     SELL = "SELL"
     HOLD = "HOLD"
 
 
 class AgentName(StrEnum):
     """All agents in the system. Single place to manage names."""
-    TECHNICAL  = "technical_analysis"
-    MOMENTUM   = "momentum_strategy"
-    BREAKOUT   = "breakout_strategy"
+
+    TECHNICAL = "technical_analysis"
+    MOMENTUM = "momentum_strategy"
+    BREAKOUT = "breakout_strategy"
     AGGREGATOR = "aggregator"
 
 
 # ─────────────────────────────────────────────
 # Agent Output Model
 # ─────────────────────────────────────────────
+
 
 @dataclass
 class AgentAnalysis:
@@ -53,12 +57,13 @@ class AgentAnalysis:
     - TypedDict is for the state itself (LangGraph requirement)
     - Dataclass is cleaner for objects we create and pass around
     """
+
     agent_name: str
     signal: Signal
-    confidence: float                           # 0.0 – 1.0
-    reasoning: str                              # Human-readable explanation
+    confidence: float  # 0.0 – 1.0
+    reasoning: str  # Human-readable explanation
     key_indicators: dict[str, Any] = field(default_factory=dict)  # Data that drove the decision
-    warnings: list[str] = field(default_factory=list)             # Red flags worth surfacing
+    warnings: list[str] = field(default_factory=list)  # Red flags worth surfacing
 
     def __post_init__(self):
         """Validate confidence is in valid range."""
@@ -69,6 +74,7 @@ class AgentAnalysis:
 # ─────────────────────────────────────────────
 # Main State Schema
 # ─────────────────────────────────────────────
+
 
 class TradingState(TypedDict):
     """
@@ -88,23 +94,23 @@ class TradingState(TypedDict):
 
     # ── Input (set by orchestrator before graph runs) ──────────────────────
     symbol: str
-    market_data: dict[str, Any]         # Raw OHLCV + metadata from data pipeline
-    indicators: dict[str, Any]          # All computed technical indicators
-    scan_timestamp: str                 # ISO format string
+    market_data: dict[str, Any]  # Raw OHLCV + metadata from data pipeline
+    indicators: dict[str, Any]  # All computed technical indicators
+    scan_timestamp: str  # ISO format string
 
     # ── Agent outputs (populated during parallel agent execution) ───────────
     technical_analysis: AgentAnalysis | None
-    momentum_analysis:  AgentAnalysis | None
-    breakout_analysis:  AgentAnalysis | None
+    momentum_analysis: AgentAnalysis | None
+    breakout_analysis: AgentAnalysis | None
 
     # ── Final decision (populated by aggregator) ────────────────────────────
-    final_signal:     Signal | None
-    final_confidence: float | None   # Weighted aggregate confidence
-    final_reasoning:  str | None     # Summary combining all agent reasoning
-    agent_agreement:  float | None   # 0.0 = all disagree, 1.0 = all agree
+    final_signal: Signal | None
+    final_confidence: float | None  # Weighted aggregate confidence
+    final_reasoning: str | None  # Summary combining all agent reasoning
+    agent_agreement: float | None  # 0.0 = all disagree, 1.0 = all agree
 
     # ── Observability ────────────────────────────────────────────────────────
-    errors: list[str]                   # Non-fatal errors from any agent
+    errors: list[str]  # Non-fatal errors from any agent
 
 
 def initial_state(symbol: str, market_data: dict, indicators: dict) -> TradingState:
@@ -119,15 +125,12 @@ def initial_state(symbol: str, market_data: dict, indicators: dict) -> TradingSt
         market_data=market_data,
         indicators=indicators,
         scan_timestamp=datetime.utcnow().isoformat(),
-
         technical_analysis=None,
         momentum_analysis=None,
         breakout_analysis=None,
-
         final_signal=None,
         final_confidence=None,
         final_reasoning=None,
         agent_agreement=None,
-
         errors=[],
     )

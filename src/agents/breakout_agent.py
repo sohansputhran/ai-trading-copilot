@@ -50,16 +50,16 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
     agent_name = AgentName.BREAKOUT.value
 
     # ── Thresholds ────────────────────────────────────────────────────────────
-    VOLUME_MODERATE   = 1.5    # 1.5x avg volume — moderate interest
-    VOLUME_STRONG     = 2.0    # 2.0x avg volume — strong confirmation
-    VOLUME_EXTREME    = 3.0    # 3.0x avg volume — climactic (potential exhaustion)
+    VOLUME_MODERATE = 1.5  # 1.5x avg volume — moderate interest
+    VOLUME_STRONG = 2.0  # 2.0x avg volume — strong confirmation
+    VOLUME_EXTREME = 3.0  # 3.0x avg volume — climactic (potential exhaustion)
 
-    NEAR_RESISTANCE   = 0.97   # Within 3% of resistance = approaching breakout
-    AT_RESISTANCE     = 0.99   # Within 1% = at resistance
-    ABOVE_RESISTANCE  = 1.01   # 1% above = confirmed breakout
+    NEAR_RESISTANCE = 0.97  # Within 3% of resistance = approaching breakout
+    AT_RESISTANCE = 0.99  # Within 1% = at resistance
+    ABOVE_RESISTANCE = 1.01  # 1% above = confirmed breakout
 
-    RSI_BREAKOUT_MAX  = 80.0   # Avoid breakout buys when RSI already extreme
-    RSI_BREAKDOWN_MIN = 20.0   # Avoid breakdown sells when RSI already extreme
+    RSI_BREAKOUT_MAX = 80.0  # Avoid breakout buys when RSI already extreme
+    RSI_BREAKDOWN_MIN = 20.0  # Avoid breakdown sells when RSI already extreme
 
     SYSTEM_PROMPT = (
         "You are a breakout trader specializing in volume-confirmed price breakouts. "
@@ -70,20 +70,20 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
 
     def analyze(self, state: TradingState) -> AgentAnalysis:
         indicators = state["indicators"]
-        symbol     = state["symbol"]
-        self.log   = logger.bind(agent=self.agent_name, symbol=symbol)
+        symbol = state["symbol"]
+        self.log = logger.bind(agent=self.agent_name, symbol=symbol)
 
-        snapshot                              = self._extract_indicators(indicators)
+        snapshot = self._extract_indicators(indicators)
         signal, confidence, rule_text, warnings = self._compute_signal(snapshot)
         reasoning = self._get_llm_reasoning(symbol, snapshot, signal) or rule_text
 
         return AgentAnalysis(
-            agent_name    = self.agent_name,
-            signal        = signal,
-            confidence    = confidence,
-            reasoning     = reasoning,
-            key_indicators= snapshot,
-            warnings      = warnings,
+            agent_name=self.agent_name,
+            signal=signal,
+            confidence=confidence,
+            reasoning=reasoning,
+            key_indicators=snapshot,
+            warnings=warnings,
         )
 
     # ─────────────────────────────────────────────
@@ -93,21 +93,19 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
     def _extract_indicators(self, indicators: dict[str, Any]) -> dict[str, float]:
         """Pull only the indicators this agent uses."""
         return {
-            "volume_ratio":        self.safe_get(indicators, "volume_ratio",        1.0),
+            "volume_ratio": self.safe_get(indicators, "volume_ratio", 1.0),
             "price_vs_resistance": self.safe_get(indicators, "price_vs_resistance", 0.9),
-            "atr":                 self.safe_get(indicators, "atr",                  0.0),
-            "price":               self.safe_get(indicators, "price",                0.0),
-            "resistance":          self.safe_get(indicators, "resistance",            0.0),
-            "rsi":                 self.safe_get(indicators, "rsi",                  50.0),
+            "atr": self.safe_get(indicators, "atr", 0.0),
+            "price": self.safe_get(indicators, "price", 0.0),
+            "resistance": self.safe_get(indicators, "resistance", 0.0),
+            "rsi": self.safe_get(indicators, "rsi", 50.0),
         }
 
     # ─────────────────────────────────────────────
     # Private: rule-based signal logic
     # ─────────────────────────────────────────────
 
-    def _compute_signal(
-        self, snap: dict[str, float]
-    ) -> tuple[Signal, float, str, list[str]]:
+    def _compute_signal(self, snap: dict[str, float]) -> tuple[Signal, float, str, list[str]]:
         """
         Breakout scoring.
 
@@ -124,16 +122,16 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
             Price vs resistance:    2.0 pts  — proximity to/above breakout level
             ATR expansion:          1.0 pts  — volatility confirming the move
         """
-        vol_ratio   = snap["volume_ratio"]
-        pvr         = snap["price_vs_resistance"]   # price / resistance
-        rsi         = snap["rsi"]
-        atr         = snap["atr"]
-        price       = snap["price"]
-        resistance  = snap["resistance"]
+        vol_ratio = snap["volume_ratio"]
+        pvr = snap["price_vs_resistance"]  # price / resistance
+        rsi = snap["rsi"]
+        atr = snap["atr"]
+        price = snap["price"]
+        resistance = snap["resistance"]
 
         bull_score = 0.0
         bear_score = 0.0
-        reasons:  list[str] = []
+        reasons: list[str] = []
         warnings: list[str] = []
 
         # ── Volume scoring (2.0 pts) ──────────────────────────────────────────
@@ -194,7 +192,7 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
         # We use pvr < 0.85 (price well below its 20-day high) as a proxy
         if pvr < 0.85 and vol_ratio >= self.VOLUME_STRONG:
             bear_score += vol_pts
-            bear_score += 1.5   # Price well below recent high with high volume
+            bear_score += 1.5  # Price well below recent high with high volume
             reasons.append(
                 f"Price ({price:.1f}) significantly below recent high with "
                 f"volume {vol_ratio:.1f}x — potential breakdown"
@@ -212,50 +210,48 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
                 reasons.append(f"Price move ({price_move:.1f}) exceeds ATR ({atr:.1f}) — real move")
             else:
                 warnings.append(
-                    f"Price move ({price_move:.1f}) smaller than ATR ({atr:.1f}) — "
-                    f"may be noise"
+                    f"Price move ({price_move:.1f}) smaller than ATR ({atr:.1f}) — " f"may be noise"
                 )
 
         # ── RSI filter ────────────────────────────────────────────────────────
         if bull_score > bear_score and rsi > self.RSI_BREAKOUT_MAX:
-            warnings.append(
-                f"RSI={rsi:.1f} extremely high — breakout may be exhausted"
-            )
+            warnings.append(f"RSI={rsi:.1f} extremely high — breakout may be exhausted")
         if bear_score > bull_score and rsi < self.RSI_BREAKDOWN_MIN:
-            warnings.append(
-                f"RSI={rsi:.1f} extremely low — breakdown may be exhausted"
-            )
+            warnings.append(f"RSI={rsi:.1f} extremely low — breakdown may be exhausted")
 
         # ── Determine signal + confidence ─────────────────────────────────────
         max_possible = 5.0
 
         if bull_score > bear_score and bull_score > 0:
-            signal     = Signal.BUY
+            signal = Signal.BUY
             confidence = round(min(bull_score / max_possible, 1.0), 3)
-            rule_text  = (
+            rule_text = (
                 f"Bullish breakout signal. {'; '.join(reasons)}. "
                 f"Score: {bull_score:.1f}/{max_possible}"
             )
         elif bear_score > bull_score and bear_score > 0:
-            signal     = Signal.SELL
+            signal = Signal.SELL
             confidence = round(min(bear_score / max_possible, 1.0), 3)
-            rule_text  = (
+            rule_text = (
                 f"Bearish breakdown signal. {'; '.join(reasons)}. "
                 f"Score: {bear_score:.1f}/{max_possible}"
             )
         else:
-            signal     = Signal.HOLD
+            signal = Signal.HOLD
             confidence = 0.2
-            rule_text  = (
+            rule_text = (
                 f"No breakout setup — volume {vol_ratio:.1f}x, "
                 f"price at {pvr:.0%} of resistance. Waiting for setup."
             )
 
         self.log.debug(
             "rule_signal_computed",
-            signal=signal, bull_score=bull_score,
-            bear_score=bear_score, confidence=confidence,
-            volume_ratio=vol_ratio, price_vs_resistance=pvr,
+            signal=signal,
+            bull_score=bull_score,
+            bear_score=bear_score,
+            confidence=confidence,
+            volume_ratio=vol_ratio,
+            price_vs_resistance=pvr,
         )
 
         return signal, confidence, rule_text, warnings
@@ -264,18 +260,23 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
     # Private: LLM reasoning enrichment
     # ─────────────────────────────────────────────
 
-    def _get_llm_reasoning(
-        self, symbol: str, snap: dict[str, float], signal: Signal
-    ) -> str:
+    def _get_llm_reasoning(self, symbol: str, snap: dict[str, float], signal: Signal) -> str:
         if self.llm_client is None:
             return ""
 
         pvr = snap["price_vs_resistance"]
         price_desc = (
-            "above resistance (confirmed breakout)"       if pvr >= self.ABOVE_RESISTANCE
-            else "at resistance (breakout imminent)"      if pvr >= self.AT_RESISTANCE
-            else f"approaching resistance ({pvr:.0%} of level)" if pvr >= self.NEAR_RESISTANCE
-            else f"below resistance ({pvr:.0%} of level)"
+            "above resistance (confirmed breakout)"
+            if pvr >= self.ABOVE_RESISTANCE
+            else (
+                "at resistance (breakout imminent)"
+                if pvr >= self.AT_RESISTANCE
+                else (
+                    f"approaching resistance ({pvr:.0%} of level)"
+                    if pvr >= self.NEAR_RESISTANCE
+                    else f"below resistance ({pvr:.0%} of level)"
+                )
+            )
         )
 
         user_message = (

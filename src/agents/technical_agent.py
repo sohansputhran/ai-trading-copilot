@@ -39,13 +39,13 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
     agent_name = AgentName.TECHNICAL.value
 
     # ── Signal thresholds (standard TA practice) ──────────────────────────────
-    RSI_OVERSOLD    = 30.0
-    RSI_OVERBOUGHT  = 70.0
-    RSI_MILD_BULL   = 50.0   # Above midpoint = mild bullish bias
+    RSI_OVERSOLD = 30.0
+    RSI_OVERBOUGHT = 70.0
+    RSI_MILD_BULL = 50.0  # Above midpoint = mild bullish bias
 
     # bb_position thresholds (0.0 = at lower band, 1.0 = at upper band)
-    BB_NEAR_LOWER   = 0.15   # Price near lower band → oversold territory
-    BB_NEAR_UPPER   = 0.85   # Price near upper band → overbought territory
+    BB_NEAR_LOWER = 0.15  # Price near lower band → oversold territory
+    BB_NEAR_UPPER = 0.85  # Price near upper band → overbought territory
 
     # System prompt for LLM reasoning enrichment
     SYSTEM_PROMPT = (
@@ -66,20 +66,20 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
         4. Return typed AgentAnalysis
         """
         indicators = state["indicators"]
-        symbol     = state["symbol"]
-        self.log   = logger.bind(agent=self.agent_name, symbol=symbol)
+        symbol = state["symbol"]
+        self.log = logger.bind(agent=self.agent_name, symbol=symbol)
 
-        snapshot                     = self._extract_indicators(indicators)
+        snapshot = self._extract_indicators(indicators)
         signal, confidence, rule_text, warnings = self._compute_signal(snapshot)
-        reasoning                    = self._get_llm_reasoning(symbol, snapshot, signal) or rule_text
+        reasoning = self._get_llm_reasoning(symbol, snapshot, signal) or rule_text
 
         return AgentAnalysis(
-            agent_name    = self.agent_name,
-            signal        = signal,
-            confidence    = confidence,
-            reasoning     = reasoning,
-            key_indicators= snapshot,
-            warnings      = warnings,
+            agent_name=self.agent_name,
+            signal=signal,
+            confidence=confidence,
+            reasoning=reasoning,
+            key_indicators=snapshot,
+            warnings=warnings,
         )
 
     # ─────────────────────────────────────────────
@@ -94,20 +94,18 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
             'rsi', 'macd', 'macd_signal', 'bb_position', 'volume_ratio', 'price'
         """
         return {
-            "rsi":          self.safe_get(indicators, "rsi",          50.0),
-            "macd":         self.safe_get(indicators, "macd",          0.0),
-            "macd_signal":  self.safe_get(indicators, "macd_signal",   0.0),
-            "bb_position":  self.safe_get(indicators, "bb_position",   0.5),
-            "price":        self.safe_get(indicators, "price",         0.0),
+            "rsi": self.safe_get(indicators, "rsi", 50.0),
+            "macd": self.safe_get(indicators, "macd", 0.0),
+            "macd_signal": self.safe_get(indicators, "macd_signal", 0.0),
+            "bb_position": self.safe_get(indicators, "bb_position", 0.5),
+            "price": self.safe_get(indicators, "price", 0.0),
         }
 
     # ─────────────────────────────────────────────
     # Private: rule-based signal logic
     # ─────────────────────────────────────────────
 
-    def _compute_signal(
-        self, snap: dict[str, float]
-    ) -> tuple[Signal, float, str, list[str]]:
+    def _compute_signal(self, snap: dict[str, float]) -> tuple[Signal, float, str, list[str]]:
         """
         Multi-factor scoring system.
 
@@ -120,17 +118,17 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
             MACD line vs signal:        1.5 pts  (momentum direction)
             Bollinger Band position:    0.5 pts  (volatility context)
         """
-        rsi         = snap["rsi"]
-        macd        = snap["macd"]
+        rsi = snap["rsi"]
+        macd = snap["macd"]
         macd_signal = snap["macd_signal"]
-        bb_pos      = snap["bb_position"]
+        bb_pos = snap["bb_position"]
 
         # Derived: MACD histogram equivalent (line minus signal)
         macd_hist_equiv = macd - macd_signal
 
         bull_score = 0.0
         bear_score = 0.0
-        reasons:  list[str] = []
+        reasons: list[str] = []
         warnings: list[str] = []
 
         # ── RSI (2.0 pts) ─────────────────────────────────────────────────────
@@ -170,28 +168,30 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
         max_possible = 4.0
 
         if bull_score > bear_score:
-            signal     = Signal.BUY
+            signal = Signal.BUY
             confidence = round(min(bull_score / max_possible, 1.0), 3)
-            rule_text  = (
+            rule_text = (
                 f"Bullish oscillator signal. {'; '.join(reasons)}. "
                 f"Score: {bull_score:.1f}/{max_possible}"
             )
         elif bear_score > bull_score:
-            signal     = Signal.SELL
+            signal = Signal.SELL
             confidence = round(min(bear_score / max_possible, 1.0), 3)
-            rule_text  = (
+            rule_text = (
                 f"Bearish oscillator signal. {'; '.join(reasons)}. "
                 f"Score: {bear_score:.1f}/{max_possible}"
             )
         else:
-            signal     = Signal.HOLD
+            signal = Signal.HOLD
             confidence = 0.3
-            rule_text  = "Neutral oscillator conditions — no clear signal."
+            rule_text = "Neutral oscillator conditions — no clear signal."
 
         self.log.debug(
             "rule_signal_computed",
-            signal=signal, bull_score=bull_score,
-            bear_score=bear_score, confidence=confidence,
+            signal=signal,
+            bull_score=bull_score,
+            bear_score=bear_score,
+            confidence=confidence,
         )
 
         return signal, confidence, rule_text, warnings
@@ -200,9 +200,7 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
     # Private: LLM reasoning enrichment
     # ─────────────────────────────────────────────
 
-    def _get_llm_reasoning(
-        self, symbol: str, snap: dict[str, float], signal: Signal
-    ) -> str:
+    def _get_llm_reasoning(self, symbol: str, snap: dict[str, float], signal: Signal) -> str:
         """
         Ask the LLM to explain the pre-computed signal in plain English.
 
@@ -213,13 +211,25 @@ class TechnicalAnalysisAgent(BaseStrategyAgent):
             return ""
 
         bb_desc = (
-            "near lower band (oversold zone)" if snap["bb_pos"] <= self.BB_NEAR_LOWER
-            else "near upper band (overbought zone)" if snap["bb_pos"] >= self.BB_NEAR_UPPER
-            else "within bands (neutral)"
-        ) if "bb_pos" in snap else (
-            "near lower band" if snap["bb_position"] <= self.BB_NEAR_LOWER
-            else "near upper band" if snap["bb_position"] >= self.BB_NEAR_UPPER
-            else "within bands"
+            (
+                "near lower band (oversold zone)"
+                if snap["bb_pos"] <= self.BB_NEAR_LOWER
+                else (
+                    "near upper band (overbought zone)"
+                    if snap["bb_pos"] >= self.BB_NEAR_UPPER
+                    else "within bands (neutral)"
+                )
+            )
+            if "bb_pos" in snap
+            else (
+                "near lower band"
+                if snap["bb_position"] <= self.BB_NEAR_LOWER
+                else (
+                    "near upper band"
+                    if snap["bb_position"] >= self.BB_NEAR_UPPER
+                    else "within bands"
+                )
+            )
         )
 
         user_message = (
