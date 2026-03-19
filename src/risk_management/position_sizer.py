@@ -116,24 +116,48 @@ class PositionSizer:
             risk_per_trade_pct=self.risk_per_trade_pct * 100,
         )
 
-    def _apply_max_cap(self, raw_shares: float, entry_price: float) -> int:
+    def calculate(
+        self,
+        entry_price: float,
+        stop_loss: float,
+        atr: Optional[float] = None,
+        confidence: float = 0.5,
+        reward_risk_ratio: float = 2.0,
+    ) -> PositionSize:
         """
-        Enforce the hard cap: no position > ABSOLUTE_MAX_POSITION_PCT of portfolio.
-        Returns whole shares (floor, never round up into extra risk).
-        """
-        max_capital = self.portfolio_value * self.ABSOLUTE_MAX_POSITION_PCT
-        max_shares_by_cap = max_capital / entry_price if entry_price > 0 else 0
-        capped_shares = min(raw_shares, max_shares_by_cap)
+        Calculate position size using the configured method.
 
-        if capped_shares < raw_shares:
-            logger.info(
-                "position_capped_at_max",
-                raw_shares=int(raw_shares),
-                capped_shares=int(capped_shares),
-                max_pct=self.ABSOLUTE_MAX_POSITION_PCT * 100,
+        Args:
+            entry_price:      Price at which we'd enter the trade
+            stop_loss:        Price at which we'd exit if wrong (defines 1R)
+            atr:              Average True Range (required for ATR_BASED method)
+            confidence:       Agent confidence score 0-1 (used to scale Kelly)
+            reward_risk_ratio: Expected reward / risk (used in Kelly formula)
+
+        Returns:
+            PositionSize with shares, capital at risk, and reasoning
+
+        Note on stop_loss: entry must be above stop for long trades.
+        We enforce this defensively — if stop >= entry, we use a minimum
+        risk of 0.5% of entry price to avoid division by zero.
+        """
+        # Defensive: ensure stop is below entry (long-only for now)
+        risk_per_share = entry_price - stop_loss
+        if risk_per_share <= 0:
+            logger.warning(
+                "invalid_stop_loss",
+                entry=entry_price,
+                stop=stop_loss,
+                action="using_minimum_risk",
             )
+            risk_per_share = entry_price * 0.005  # 0.5% minimum risk
 
-        return max(0, int(capped_shares))  # floor + guard against negatives
+        if self.method == SizingMethod.KELLY:
+            return self._kelly_size(entry_price, risk_per_share, confidence, reward_risk_ratio)
+        elif self.method == SizingMethod.ATR_BASED:
+            return self._atr_size(entry_price, risk_per_share, atr)
+        else:  # default: FIXED_FRACTIONAL
+            return self._fixed_fractional_size(entry_price, risk_per_share)
 
     # -------------------------------------------------------------------------
     # Private sizing implementations
@@ -330,45 +354,21 @@ class PositionSizer:
             reasoning=reasoning,
         )
 
-    def calculate(
-        self,
-        entry_price: float,
-        stop_loss: float,
-        atr: Optional[float] = None,
-        confidence: float = 0.5,
-        reward_risk_ratio: float = 2.0,
-    ) -> PositionSize:
+    def _apply_max_cap(self, raw_shares: float, entry_price: float) -> int:
         """
-        Calculate position size using the configured method.
-
-        Args:
-            entry_price:      Price at which we'd enter the trade
-            stop_loss:        Price at which we'd exit if wrong (defines 1R)
-            atr:              Average True Range (required for ATR_BASED method)
-            confidence:       Agent confidence score 0-1 (used to scale Kelly)
-            reward_risk_ratio: Expected reward / risk (used in Kelly formula)
-
-        Returns:
-            PositionSize with shares, capital at risk, and reasoning
-
-        Note on stop_loss: entry must be above stop for long trades.
-        We enforce this defensively — if stop >= entry, we use a minimum
-        risk of 0.5% of entry price to avoid division by zero.
+        Enforce the hard cap: no position > ABSOLUTE_MAX_POSITION_PCT of portfolio.
+        Returns whole shares (floor, never round up into extra risk).
         """
-        # Defensive: ensure stop is below entry (long-only for now)
-        risk_per_share = entry_price - stop_loss
-        if risk_per_share <= 0:
-            logger.warning(
-                "invalid_stop_loss",
-                entry=entry_price,
-                stop=stop_loss,
-                action="using_minimum_risk",
+        max_capital = self.portfolio_value * self.ABSOLUTE_MAX_POSITION_PCT
+        max_shares_by_cap = max_capital / entry_price if entry_price > 0 else 0
+        capped_shares = min(raw_shares, max_shares_by_cap)
+
+        if capped_shares < raw_shares:
+            logger.info(
+                "position_capped_at_max",
+                raw_shares=int(raw_shares),
+                capped_shares=int(capped_shares),
+                max_pct=self.ABSOLUTE_MAX_POSITION_PCT * 100,
             )
-            risk_per_share = entry_price * 0.005  # 0.5% minimum risk
 
-        if self.method == SizingMethod.KELLY:
-            return self._kelly_size(entry_price, risk_per_share, confidence, reward_risk_ratio)
-        elif self.method == SizingMethod.ATR_BASED:
-            return self._atr_size(entry_price, risk_per_share, atr)
-        else:  # default: FIXED_FRACTIONAL
-            return self._fixed_fractional_size(entry_price, risk_per_share)
+        return max(0, int(capped_shares))  # floor + guard against negatives
