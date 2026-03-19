@@ -20,25 +20,25 @@ import pandas as pd
 class SimpleTechnicalIndicators:
     """
     Calculate technical indicators manually using just pandas.
-    
+
     No external indicator libraries needed - just math!
     """
 
     def calculate_rsi(self, df: pd.DataFrame, period: int = 14) -> pd.Series:
         """
         Calculate RSI manually.
-        
+
         HOW RSI IS CALCULATED:
         1. Calculate price changes (today - yesterday)
         2. Separate into gains and losses
         3. Average the gains and losses over 14 days
         4. RS = Average Gain / Average Loss
         5. RSI = 100 - (100 / (1 + RS))
-        
+
         Args:
             df: DataFrame with 'Close' column
             period: Lookback period (default 14)
-            
+
         Returns:
             Series with RSI values
         """
@@ -64,19 +64,19 @@ class SimpleTechnicalIndicators:
     def calculate_macd(self, df: pd.DataFrame) -> dict[str, pd.Series]:
         """
         Calculate MACD manually.
-        
+
         HOW MACD IS CALCULATED:
         1. Calculate 12-day EMA (fast)
         2. Calculate 26-day EMA (slow)
         3. MACD = Fast EMA - Slow EMA
         4. Signal = 9-day EMA of MACD
         5. Histogram = MACD - Signal
-        
+
         EMA = Exponential Moving Average (gives more weight to recent prices)
-        
+
         Args:
             df: DataFrame with 'Close' column
-            
+
         Returns:
             Dict with 'MACD', 'Signal', 'Histogram'
         """
@@ -107,18 +107,18 @@ class SimpleTechnicalIndicators:
     ) -> dict[str, pd.Series]:
         """
         Calculate Bollinger Bands manually.
-        
+
         HOW BOLLINGER BANDS ARE CALCULATED:
         1. Middle Band = 20-day Simple Moving Average
         2. Standard Deviation = Measure of price volatility
         3. Upper Band = Middle + (2 × Std Dev)
         4. Lower Band = Middle - (2 × Std Dev)
-        
+
         Args:
             df: DataFrame with 'Close' column
             period: Lookback period (default 20)
             std_dev: Number of standard deviations (default 2.0)
-            
+
         Returns:
             Dict with 'Upper', 'Middle', 'Lower' bands
         """
@@ -267,10 +267,10 @@ class SimpleTechnicalIndicators:
     def calculate_all(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Calculate all indicators at once.
-        
+
         Args:
             df: DataFrame with OHLCV data
-            
+
         Returns:
             DataFrame with original data + indicator columns
         """

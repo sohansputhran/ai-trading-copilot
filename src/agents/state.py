@@ -14,21 +14,21 @@ Why TypedDict?
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, TypedDict
 
 # ─────────────────────────────────────────────
 # Enums
 # ─────────────────────────────────────────────
 
-class Signal(str, Enum):
+class Signal(StrEnum):
     """Trading signal. String enum so it serializes cleanly to JSON."""
     BUY  = "BUY"
     SELL = "SELL"
     HOLD = "HOLD"
 
 
-class AgentName(str, Enum):
+class AgentName(StrEnum):
     """All agents in the system. Single place to manage names."""
     TECHNICAL  = "technical_analysis"
     MOMENTUM   = "momentum_strategy"

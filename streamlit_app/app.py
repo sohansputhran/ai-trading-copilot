@@ -389,28 +389,28 @@ else:
     # Welcome message
     st.markdown("""
     ## Welcome to AI Trading Scanner
-    
+
     This tool uses **free AI** to scan stocks and identify potential trading opportunities.
-    
+
     ### How it works:
     1. **Select stocks** to scan (left sidebar)
     2. **Click "Run Scanner"** to start
     3. **View results** - AI will explain why each stock is interesting
-    
+
     ### What the AI looks for:
     - 🟢 **Oversold stocks** (RSI < 30) - potential buy opportunities
-    - 🔴 **Overbought stocks** (RSI > 70) - potential sell opportunities  
+    - 🔴 **Overbought stocks** (RSI > 70) - potential sell opportunities
     - 📊 **Momentum shifts** (MACD changes)
     - 📈 **Volume spikes** (unusual trading activity)
-    
+
     ### Powered by:
     - **HuggingFace Llama-3-8B** (Free AI model)
     - **LangGraph** (Multi-agent orchestration)
     - **Yahoo Finance** (Free market data)
     - **Streamlit** (This beautiful dashboard)
-    
+
     ---
-    
+
     **Ready?** Select stocks in the sidebar and click "Run Scanner"!
     """)
 

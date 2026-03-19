@@ -22,14 +22,14 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 import structlog
 
 logger = structlog.get_logger()
 
 
-class SizingMethod(str, Enum):
+class SizingMethod(StrEnum):
     """Which position sizing algorithm to use."""
     KELLY = "kelly"
     FIXED_FRACTIONAL = "fixed_fractional"

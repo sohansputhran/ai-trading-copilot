@@ -28,7 +28,7 @@ from src.data_pipeline.indicators_simple import SimpleTechnicalIndicators
 class RuleBasedScanner:
     """
     Simple rule-based scanner without AI.
-    
+
     Uses if/else logic to identify patterns.
     """
 
@@ -41,10 +41,10 @@ class RuleBasedScanner:
     def analyze_indicators(self, indicators: dict) -> dict:
         """
         Analyze indicators using simple rules.
-        
+
         Args:
             indicators: Dict with RSI, MACD, volume_ratio
-            
+
         Returns:
             Dict with interesting flag and reasoning
         """

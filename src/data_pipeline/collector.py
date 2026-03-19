@@ -24,7 +24,7 @@ import yfinance as yf
 class MarketDataCollector:
     """
     Fetches market data from Yahoo Finance.
-    
+
     For Indian stocks, add .NS suffix (NSE) or .BO (BSE)
     Example: "RELIANCE.NS" for Reliance on NSE
     """
@@ -37,15 +37,15 @@ class MarketDataCollector:
     ) -> pd.DataFrame:
         """
         Fetch historical data for a stock.
-        
+
         Args:
             symbol: Stock symbol (e.g., "RELIANCE.NS")
             period: How much history? "1d", "5d", "1mo", "3mo", "1y", "max"
             interval: Data frequency? "1m", "5m", "1h", "1d"
-        
+
         Returns:
             DataFrame with columns: Open, High, Low, Close, Volume
-        
+
         Example:
             collector = MarketDataCollector()
             data = collector.fetch_data("TCS.NS", period="1mo")
@@ -70,10 +70,10 @@ class MarketDataCollector:
     def fetch_current_price(self, symbol: str) -> float:
         """
         Get just the latest closing price.
-        
+
         Args:
             symbol: Stock symbol
-            
+
         Returns:
             Latest close price as float
         """

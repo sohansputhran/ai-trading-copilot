@@ -36,7 +36,7 @@ from src.utils.config import HUGGINGFACE_API_TOKEN
 class MarketScanner:
     """
     Scans stocks and identifies trading opportunities using AI.
-    
+
     This is our first AI agent! It uses Claude to analyze
     technical indicators and explain opportunities.
     """
@@ -103,10 +103,10 @@ class MarketScanner:
     def scan_stock(self, symbol: str) -> dict | None:
         """
         Scan a single stock for trading opportunities.
-        
+
         Args:
             symbol: Stock symbol (e.g., "RELIANCE.NS")
-            
+
         Returns:
             Dict with analysis if interesting, None otherwise
         """
@@ -190,10 +190,10 @@ class MarketScanner:
     def _rule_based_fallback(self, indicators: dict) -> tuple:
         """
         Rule-based analysis when AI fails.
-        
+
         Args:
             indicators: Dict with RSI, MACD, volume_ratio
-            
+
         Returns:
             Tuple of (is_interesting: bool, analysis: str)
         """
@@ -239,10 +239,10 @@ REASON: RSI {rsi:.1f}, MACD {macd:.2f}, Volume {volume_ratio:.1f}x. No clear set
     def scan(self, symbols: list[str]) -> list[dict]:
         """
         Scan multiple stocks and return ALL results with reasons.
-        
+
         Args:
             symbols: List of stock symbols
-            
+
         Returns:
             List of dicts with analysis for ALL stocks
         """
