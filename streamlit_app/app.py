@@ -17,27 +17,27 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-import streamlit as st
-import pandas as pd
 import plotly.graph_objects as go
+import streamlit as st
 
 # Try to import AI scanner, fallback to rule-based
 try:
-    from src.agents.scanner_agent import MarketScanner, NIFTY_50_SAMPLE
+    from src.agents.scanner_agent import NIFTY_50_SAMPLE, MarketScanner
     SCANNER_TYPE = "AI"
 except Exception as e:
-    from src.agents.rule_based_scanner import RuleBasedScanner as MarketScanner, NIFTY_50_SAMPLE
+    from src.agents.rule_based_scanner import NIFTY_50_SAMPLE
+    from src.agents.rule_based_scanner import RuleBasedScanner as MarketScanner
     SCANNER_TYPE = "Rule-Based"
-    
+
 from src.data_pipeline.collector import MarketDataCollector
 from src.data_pipeline.indicators import SimpleTechnicalIndicators
 
 # Multi-agent orchestration
 try:
-    from src.agents.technical_agent import TechnicalAnalysisAgent
-    from src.agents.momentum_agent import MomentumStrategyAgent
     from src.agents.breakout_agent import BreakoutStrategyAgent
+    from src.agents.momentum_agent import MomentumStrategyAgent
     from src.agents.orchestrator import MultiAgentOrchestrator
+    from src.agents.technical_agent import TechnicalAnalysisAgent
     MULTI_AGENT_AVAILABLE = True
 except ImportError:
     MULTI_AGENT_AVAILABLE = False
@@ -162,10 +162,10 @@ if scan_button:
     else:
         # Show scanning progress
         st.subheader(f"Scanning {len(symbols)} stocks...")
-        
+
         progress_bar = st.progress(0)
         status_text = st.empty()
-        
+
         # Initialize scanner
         scanner = MarketScanner()
 
@@ -223,14 +223,14 @@ if scan_button:
                     # No orchestrator - single scanner classification stands
                 results.append(result)
             progress_bar.progress((i + 1) / len(symbols))
-        
+
         progress_bar.empty()
         status_text.empty()
-        
+
         # Separate results into interesting and not interesting
         interesting_stocks = [r for r in results if r.get('interesting', False)]
         not_interesting_stocks = [r for r in results if not r.get('interesting', False)]
-        
+
         # Display summary
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -239,26 +239,26 @@ if scan_button:
             st.metric("Interesting", len(interesting_stocks))
         with col3:
             st.metric("Not Interesting", len(not_interesting_stocks))
-        
+
         # Create tabs for interesting vs not interesting
         tab1, tab2 = st.tabs(["Interesting Stocks", "Not Interesting"])
-        
+
         with tab1:
             if interesting_stocks:
                 st.subheader(f"{len(interesting_stocks)} Stocks with Clear Signals")
-                
+
                 for i, result in enumerate(interesting_stocks, 1):
                     with st.expander(f"**{i}. {result['symbol']}** - ₹{result['price']:.2f}", expanded=(i==1)):
-                        
+
                         # Create two columns
                         col1, col2 = st.columns([1, 1])
-                        
+
                         with col1:
                             st.markdown("### Indicators")
-                            
+
                             # Show indicators in a nice format
                             indicators = result['indicators']
-                            
+
                             # RSI with color
                             rsi_val = indicators['rsi']
                             if rsi_val < 30:
@@ -270,31 +270,31 @@ if scan_button:
                             else:
                                 rsi_color = "🟡"  # Neutral
                                 rsi_label = "Neutral"
-                            
+
                             st.metric("RSI", f"{rsi_val:.2f}", f"{rsi_color} {rsi_label}")
-                            
+
                             # Other indicators
                             st.metric("MACD", f"{indicators['macd']:.2f}")
                             st.metric("Volume Ratio", f"{indicators['volume_ratio']:.2f}x")
-                        
+
                         with col2:
                             st.markdown("### AI Analysis")
                             st.success(result['analysis'].replace('\n', '\n\n'))
-                        
+
                         # Add a chart
                         st.markdown("### Price Chart (Last 3 Months)")
-                        
+
                         # Fetch data for chart
                         collector = MarketDataCollector()
                         calc = SimpleTechnicalIndicators()
-                        
+
                         try:
                             price_data = collector.fetch_data(result['symbol'], period="3mo")
                             data_with_ind = calc.calculate_all(price_data)
-                            
+
                             # Create candlestick chart
                             fig = go.Figure()
-                            
+
                             # Add candlestick
                             fig.add_trace(go.Candlestick(
                                 x=data_with_ind.index,
@@ -304,7 +304,7 @@ if scan_button:
                                 close=data_with_ind['Close'],
                                 name='Price'
                             ))
-                            
+
                             # Add Bollinger Bands
                             fig.add_trace(go.Scatter(
                                 x=data_with_ind.index,
@@ -312,7 +312,7 @@ if scan_button:
                                 name='BB Upper',
                                 line=dict(dash='dash', color='gray')
                             ))
-                            
+
                             fig.add_trace(go.Scatter(
                                 x=data_with_ind.index,
                                 y=data_with_ind['BB_Lower'],
@@ -320,16 +320,16 @@ if scan_button:
                                 line=dict(dash='dash', color='gray'),
                                 fill='tonexty'
                             ))
-                            
+
                             fig.update_layout(
                                 height=400,
                                 xaxis_title="Date",
                                 yaxis_title="Price (₹)",
                                 hovermode='x unified'
                             )
-                            
+
                             st.plotly_chart(fig, width="stretch")
-                            
+
                         except Exception as e:
                             st.warning(f"Could not load chart: {str(e)}")
 
@@ -337,26 +337,26 @@ if scan_button:
                         st.markdown("---")
                         st.markdown("### 🤖 Multi-Agent Analysis")
                         render_multi_agent_tab(result.get("multi_agent"))
-            
+
             else:
                 st.info("No stocks with clear signals found.")
-        
+
         with tab2:
             if not_interesting_stocks:
                 st.subheader(f"{len(not_interesting_stocks)} Stocks Without Clear Signals")
                 st.caption("These stocks don't show strong technical patterns right now")
-                
+
                 for i, result in enumerate(not_interesting_stocks, 1):
                     with st.expander(f"**{i}. {result['symbol']}** - ₹{result['price']:.2f}"):
-                        
+
                         # Create two columns
                         col1, col2 = st.columns([1, 1])
-                        
+
                         with col1:
                             st.markdown("### Indicators")
-                            
+
                             indicators = result['indicators']
-                            
+
                             # RSI with color
                             rsi_val = indicators['rsi']
                             if rsi_val < 30:
@@ -368,11 +368,11 @@ if scan_button:
                             else:
                                 rsi_color = "🟡"
                                 rsi_label = "Neutral"
-                            
+
                             st.metric("RSI", f"{rsi_val:.2f}", f"{rsi_color} {rsi_label}")
                             st.metric("MACD", f"{indicators['macd']:.2f}")
                             st.metric("Volume Ratio", f"{indicators['volume_ratio']:.2f}x")
-                        
+
                         with col2:
                             st.markdown("### AI Analysis")
                             st.info(result['analysis'].replace('\n', '\n\n'))
@@ -381,7 +381,7 @@ if scan_button:
                         st.markdown("---")
                         st.markdown("### 🤖 Multi-Agent Analysis")
                         render_multi_agent_tab(result.get("multi_agent"))
-            
+
             else:
                 st.success("All stocks showed interesting signals!")
 
@@ -413,7 +413,7 @@ else:
     
     **Ready?** Select stocks in the sidebar and click "Run Scanner"!
     """)
-    
+
     # Show sample stocks
     with st.expander("Available Nifty 50 Sample Stocks"):
         st.write(", ".join(NIFTY_50_SAMPLE))
