@@ -31,11 +31,12 @@ Scoring logic (max 5.0 pts):
     Price position vs EMA20:     1.0 pts  (momentum confirmation)
 """
 
+from typing import Any
+
 import structlog
-from typing import Dict, Any, List, Tuple
 
 from src.agents.base_agent import BaseStrategyAgent
-from src.agents.state import TradingState, AgentAnalysis, Signal, AgentName
+from src.agents.state import AgentAnalysis, AgentName, Signal, TradingState
 
 logger = structlog.get_logger()
 
@@ -49,11 +50,11 @@ class MomentumStrategyAgent(BaseStrategyAgent):
     agent_name = AgentName.MOMENTUM.value
 
     # ── Thresholds ────────────────────────────────────────────────────────────
-    ADX_WEAK_TREND    = 20.0   # Below this → no clear trend, avoid momentum trades
-    ADX_STRONG_TREND  = 40.0   # Above this → strong trend, high conviction
+    ADX_WEAK_TREND = 20.0  # Below this → no clear trend, avoid momentum trades
+    ADX_STRONG_TREND = 40.0  # Above this → strong trend, high conviction
 
-    RSI_CHASE_LIMIT   = 75.0   # Don't chase a BUY when RSI already this high
-    RSI_CRASH_LIMIT   = 25.0   # Don't chase a SELL when RSI already this low
+    RSI_CHASE_LIMIT = 75.0  # Don't chase a BUY when RSI already this high
+    RSI_CRASH_LIMIT = 25.0  # Don't chase a SELL when RSI already this low
 
     SYSTEM_PROMPT = (
         "You are a momentum trader specializing in trend-following strategies. "
@@ -64,44 +65,42 @@ class MomentumStrategyAgent(BaseStrategyAgent):
 
     def analyze(self, state: TradingState) -> AgentAnalysis:
         indicators = state["indicators"]
-        symbol     = state["symbol"]
-        self.log   = logger.bind(agent=self.agent_name, symbol=symbol)
+        symbol = state["symbol"]
+        self.log = logger.bind(agent=self.agent_name, symbol=symbol)
 
-        snapshot                              = self._extract_indicators(indicators)
+        snapshot = self._extract_indicators(indicators)
         signal, confidence, rule_text, warnings = self._compute_signal(snapshot)
         reasoning = self._get_llm_reasoning(symbol, snapshot, signal) or rule_text
 
         return AgentAnalysis(
-            agent_name    = self.agent_name,
-            signal        = signal,
-            confidence    = confidence,
-            reasoning     = reasoning,
-            key_indicators= snapshot,
-            warnings      = warnings,
+            agent_name=self.agent_name,
+            signal=signal,
+            confidence=confidence,
+            reasoning=reasoning,
+            key_indicators=snapshot,
+            warnings=warnings,
         )
 
     # ─────────────────────────────────────────────
     # Private: indicator extraction
     # ─────────────────────────────────────────────
 
-    def _extract_indicators(self, indicators: Dict[str, Any]) -> Dict[str, float]:
+    def _extract_indicators(self, indicators: dict[str, Any]) -> dict[str, float]:
         """Pull only the indicators this agent uses."""
         return {
-            "ema_20":    self.safe_get(indicators, "ema_20",    0.0),
-            "ema_50":    self.safe_get(indicators, "ema_50",    0.0),
+            "ema_20": self.safe_get(indicators, "ema_20", 0.0),
+            "ema_50": self.safe_get(indicators, "ema_50", 0.0),
             "ema_cross": self.safe_get(indicators, "ema_cross", 0.0),
-            "adx":       self.safe_get(indicators, "adx",       0.0),
-            "rsi":       self.safe_get(indicators, "rsi",       50.0),
-            "price":     self.safe_get(indicators, "price",     0.0),
+            "adx": self.safe_get(indicators, "adx", 0.0),
+            "rsi": self.safe_get(indicators, "rsi", 50.0),
+            "price": self.safe_get(indicators, "price", 0.0),
         }
 
     # ─────────────────────────────────────────────
     # Private: rule-based signal logic
     # ─────────────────────────────────────────────
 
-    def _compute_signal(
-        self, snap: Dict[str, float]
-    ) -> Tuple[Signal, float, str, List[str]]:
+    def _compute_signal(self, snap: dict[str, float]) -> tuple[Signal, float, str, list[str]]:
         """
         Multi-factor momentum scoring.
 
@@ -115,15 +114,15 @@ class MomentumStrategyAgent(BaseStrategyAgent):
             Price vs EMA20:       1.0 pts  — is price leading or lagging?
         """
         ema_cross = snap["ema_cross"]
-        adx       = snap["adx"]
-        rsi       = snap["rsi"]
-        price     = snap["price"]
-        ema_20    = snap["ema_20"]
+        adx = snap["adx"]
+        rsi = snap["rsi"]
+        price = snap["price"]
+        ema_20 = snap["ema_20"]
 
         bull_score = 0.0
         bear_score = 0.0
-        reasons:  List[str] = []
-        warnings: List[str] = []
+        reasons: list[str] = []
+        warnings: list[str] = []
 
         # ── Gate: ADX must show a trend exists ───────────────────────────────
         if adx < self.ADX_WEAK_TREND:
@@ -139,10 +138,14 @@ class MomentumStrategyAgent(BaseStrategyAgent):
         # ── EMA crossover direction (2.0 pts) ─────────────────────────────────
         if ema_cross > 0:
             bull_score += 2.0
-            reasons.append(f"EMA20 ({snap['ema_20']:.1f}) above EMA50 ({snap['ema_50']:.1f}) — bullish cross")
+            reasons.append(
+                f"EMA20 ({snap['ema_20']:.1f}) above EMA50 ({snap['ema_50']:.1f}) — bullish cross"
+            )
         elif ema_cross < 0:
             bear_score += 2.0
-            reasons.append(f"EMA20 ({snap['ema_20']:.1f}) below EMA50 ({snap['ema_50']:.1f}) — bearish cross")
+            reasons.append(
+                f"EMA20 ({snap['ema_20']:.1f}) below EMA50 ({snap['ema_50']:.1f}) — bearish cross"
+            )
 
         # ── ADX strength (2.0 pts) ────────────────────────────────────────────
         if adx >= self.ADX_STRONG_TREND:
@@ -152,7 +155,9 @@ class MomentumStrategyAgent(BaseStrategyAgent):
         else:
             # Developing trend — partial points proportional to ADX
             # Maps ADX range [20, 40] → [0.5, 2.0] pts
-            adx_pts = 0.5 + 1.5 * (adx - self.ADX_WEAK_TREND) / (self.ADX_STRONG_TREND - self.ADX_WEAK_TREND)
+            adx_pts = 0.5 + 1.5 * (adx - self.ADX_WEAK_TREND) / (
+                self.ADX_STRONG_TREND - self.ADX_WEAK_TREND
+            )
             reasons.append(f"ADX={adx:.1f} (developing trend)")
 
         if ema_cross > 0:
@@ -187,28 +192,31 @@ class MomentumStrategyAgent(BaseStrategyAgent):
         max_possible = 5.0
 
         if bull_score > bear_score:
-            signal     = Signal.BUY
+            signal = Signal.BUY
             confidence = round(min(bull_score / max_possible, 1.0), 3)
-            rule_text  = (
+            rule_text = (
                 f"Bullish momentum signal. {'; '.join(reasons)}. "
                 f"Score: {bull_score:.1f}/{max_possible}"
             )
         elif bear_score > bull_score:
-            signal     = Signal.SELL
+            signal = Signal.SELL
             confidence = round(min(bear_score / max_possible, 1.0), 3)
-            rule_text  = (
+            rule_text = (
                 f"Bearish momentum signal. {'; '.join(reasons)}. "
                 f"Score: {bear_score:.1f}/{max_possible}"
             )
         else:
-            signal     = Signal.HOLD
+            signal = Signal.HOLD
             confidence = 0.2
-            rule_text  = "No clear momentum direction — EMA signals are conflicting."
+            rule_text = "No clear momentum direction — EMA signals are conflicting."
 
         self.log.debug(
             "rule_signal_computed",
-            signal=signal, bull_score=bull_score,
-            bear_score=bear_score, confidence=confidence, adx=adx,
+            signal=signal,
+            bull_score=bull_score,
+            bear_score=bear_score,
+            confidence=confidence,
+            adx=adx,
         )
 
         return signal, confidence, rule_text, warnings
@@ -217,21 +225,19 @@ class MomentumStrategyAgent(BaseStrategyAgent):
     # Private: LLM reasoning enrichment
     # ─────────────────────────────────────────────
 
-    def _get_llm_reasoning(
-        self, symbol: str, snap: Dict[str, float], signal: Signal
-    ) -> str:
+    def _get_llm_reasoning(self, symbol: str, snap: dict[str, float], signal: Signal) -> str:
         if self.llm_client is None:
             return ""
 
         cross_desc = (
-            "bullish (EMA20 above EMA50)" if snap["ema_cross"] > 0
-            else "bearish (EMA20 below EMA50)" if snap["ema_cross"] < 0
-            else "neutral (EMAs equal)"
+            "bullish (EMA20 above EMA50)"
+            if snap["ema_cross"] > 0
+            else "bearish (EMA20 below EMA50)" if snap["ema_cross"] < 0 else "neutral (EMAs equal)"
         )
         trend_desc = (
-            "strong" if snap["adx"] >= self.ADX_STRONG_TREND
-            else "developing" if snap["adx"] >= self.ADX_WEAK_TREND
-            else "weak/absent"
+            "strong"
+            if snap["adx"] >= self.ADX_STRONG_TREND
+            else "developing" if snap["adx"] >= self.ADX_WEAK_TREND else "weak/absent"
         )
 
         user_message = (

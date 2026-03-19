@@ -20,22 +20,21 @@ Confidence thresholds (what triggers a BUY/SELL recommendation):
 """
 
 import structlog
-from typing import List
 
-from src.agents.state import TradingState, AgentAnalysis, Signal, AgentName
+from src.agents.state import AgentAnalysis, AgentName, Signal, TradingState
 
 logger = structlog.get_logger()
 
 # ── Configurable weights (sum must equal 1.0) ─────────────────────────────────
 AGENT_WEIGHTS = {
     AgentName.TECHNICAL: 0.35,
-    AgentName.MOMENTUM:  0.35,
-    AgentName.BREAKOUT:  0.30,
+    AgentName.MOMENTUM: 0.35,
+    AgentName.BREAKOUT: 0.30,
 }
 
 # ── Thresholds ─────────────────────────────────────────────────────────────────
-MIN_CONFIDENCE_TO_TRADE = 0.60   # Below this → always HOLD
-MIN_AGREEMENT_TO_TRADE  = 0.67   # Below this (< 2/3 agents agree) → always HOLD
+MIN_CONFIDENCE_TO_TRADE = 0.60  # Below this → always HOLD
+MIN_AGREEMENT_TO_TRADE = 0.67  # Below this (< 2/3 agents agree) → always HOLD
 
 
 def aggregate(state: TradingState) -> TradingState:
@@ -56,21 +55,21 @@ def aggregate(state: TradingState) -> TradingState:
     if not analyses:
         log.error("no_agent_analyses_available")
         return {
-            "final_signal":     Signal.HOLD,
+            "final_signal": Signal.HOLD,
             "final_confidence": 0.0,
-            "final_reasoning":  "No agent analyses available. Defaulting to HOLD.",
-            "agent_agreement":  0.0,
+            "final_reasoning": "No agent analyses available. Defaulting to HOLD.",
+            "agent_agreement": 0.0,
             "errors": state["errors"] + ["Aggregator: no analyses to aggregate"],
         }
 
     # ── Step 1: Compute agreement ─────────────────────────────────────────────
-    signals     = [a.signal for a in analyses]
-    buy_count   = signals.count(Signal.BUY)
-    sell_count  = signals.count(Signal.SELL)
-    hold_count  = signals.count(Signal.HOLD)
-    total       = len(analyses)
+    signals = [a.signal for a in analyses]
+    buy_count = signals.count(Signal.BUY)
+    sell_count = signals.count(Signal.SELL)
+    hold_count = signals.count(Signal.HOLD)
+    total = len(analyses)
 
-    dominant_count  = max(buy_count, sell_count, hold_count)
+    dominant_count = max(buy_count, sell_count, hold_count)
     agent_agreement = dominant_count / total  # 1.0 = unanimous, 0.33 = all different
 
     # ── Step 2: Determine dominant signal ─────────────────────────────────────
@@ -88,8 +87,8 @@ def aggregate(state: TradingState) -> TradingState:
     # If agents disagree significantly, reduce our confidence in the signal.
     # Example: 2 BUY (conf 0.8) + 1 SELL (conf 0.7) → agreement=0.67
     # Without penalty: high confidence. With penalty: we acknowledge uncertainty.
-    agreement_penalty   = 1.0 - (0.3 * (1.0 - agent_agreement))
-    final_confidence    = round(weighted_confidence * agreement_penalty, 3)
+    agreement_penalty = 1.0 - (0.3 * (1.0 - agent_agreement))
+    final_confidence = round(weighted_confidence * agreement_penalty, 3)
 
     # ── Step 5: Apply trading thresholds ──────────────────────────────────────
     if final_confidence < MIN_CONFIDENCE_TO_TRADE or agent_agreement < MIN_AGREEMENT_TO_TRADE:
@@ -100,13 +99,12 @@ def aggregate(state: TradingState) -> TradingState:
             f"agreement={agent_agreement:.2f} (min={MIN_AGREEMENT_TO_TRADE})]"
         )
     else:
-        final_signal  = dominant_signal
+        final_signal = dominant_signal
         threshold_note = ""
 
     # ── Step 6: Build human-readable reasoning ────────────────────────────────
     final_reasoning = _build_reasoning(
-        analyses, dominant_signal, final_signal,
-        final_confidence, agent_agreement, threshold_note
+        analyses, dominant_signal, final_signal, final_confidence, agent_agreement, threshold_note
     )
 
     log.info(
@@ -120,10 +118,10 @@ def aggregate(state: TradingState) -> TradingState:
     )
 
     return {
-        "final_signal":     final_signal,
+        "final_signal": final_signal,
         "final_confidence": final_confidence,
-        "final_reasoning":  final_reasoning,
-        "agent_agreement":  agent_agreement,
+        "final_reasoning": final_reasoning,
+        "agent_agreement": agent_agreement,
     }
 
 
@@ -131,7 +129,8 @@ def aggregate(state: TradingState) -> TradingState:
 # Private helpers
 # ─────────────────────────────────────────────
 
-def _collect_analyses(state: TradingState) -> List[AgentAnalysis]:
+
+def _collect_analyses(state: TradingState) -> list[AgentAnalysis]:
     """Pull all non-None agent analyses from state."""
     analyses = []
     for key in ("technical_analysis", "momentum_analysis", "breakout_analysis"):
@@ -141,7 +140,7 @@ def _collect_analyses(state: TradingState) -> List[AgentAnalysis]:
     return analyses
 
 
-def _weighted_confidence(analyses: List[AgentAnalysis], target_signal: Signal) -> float:
+def _weighted_confidence(analyses: list[AgentAnalysis], target_signal: Signal) -> float:
     """
     Compute confidence as a weighted average, but only for agents
     that agree with the dominant signal.
@@ -156,11 +155,11 @@ def _weighted_confidence(analyses: List[AgentAnalysis], target_signal: Signal) -
 
     for analysis in analyses:
         agent_key = AgentName(analysis.agent_name)
-        weight    = AGENT_WEIGHTS.get(agent_key, 1.0 / len(analyses))
+        weight = AGENT_WEIGHTS.get(agent_key, 1.0 / len(analyses))
 
         if analysis.signal == target_signal:
-            weighted_sum   += weight * analysis.confidence
-            total_weight   += weight
+            weighted_sum += weight * analysis.confidence
+            total_weight += weight
 
     if total_weight == 0:
         return 0.0
@@ -169,7 +168,7 @@ def _weighted_confidence(analyses: List[AgentAnalysis], target_signal: Signal) -
 
 
 def _build_reasoning(
-    analyses: List[AgentAnalysis],
+    analyses: list[AgentAnalysis],
     dominant_signal: Signal,
     final_signal: Signal,
     final_confidence: float,

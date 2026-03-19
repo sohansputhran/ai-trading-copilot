@@ -25,11 +25,12 @@ HuggingFace integration:
 """
 
 import re
-import structlog
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any
 
-from src.agents.state import TradingState, AgentAnalysis, Signal
+import structlog
+
+from src.agents.state import AgentAnalysis, Signal, TradingState
 
 logger = structlog.get_logger()
 
@@ -54,8 +55,8 @@ class BaseStrategyAgent(ABC):
             llm_model:   Model name string for logging (e.g. "Llama-3-8B").
         """
         self.llm_client = llm_client
-        self.llm_model  = llm_model
-        self.log        = logger.bind(agent=self.agent_name)
+        self.llm_model = llm_model
+        self.log = logger.bind(agent=self.agent_name)
 
     @abstractmethod
     def analyze(self, state: TradingState) -> AgentAnalysis:
@@ -88,10 +89,10 @@ class BaseStrategyAgent(ABC):
             response = self.llm_client.chat_completion(
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user",   "content": user_message},
+                    {"role": "user", "content": user_message},
                 ],
                 max_tokens=max_tokens,
-                temperature=0.3,   # Low temperature = consistent signals
+                temperature=0.3,  # Low temperature = consistent signals
             )
             generated = response.choices[0].message.content.strip()
             self.log.info("llm_call_complete", output_length=len(generated))
@@ -117,18 +118,28 @@ class BaseStrategyAgent(ABC):
 
         # Negative patterns first (order matters — "do not buy" should → HOLD)
         negative_patterns = [
-            r"do not buy", r"don't buy", r"avoid buying",
-            r"do not sell", r"don't sell",
-            r"not a buy", r"not a sell",
+            r"do not buy",
+            r"don't buy",
+            r"avoid buying",
+            r"do not sell",
+            r"don't sell",
+            r"not a buy",
+            r"not a sell",
         ]
         for pattern in negative_patterns:
             if re.search(pattern, text_lower):
                 return Signal.HOLD
 
-        buy_patterns  = [r"\bbuy\b", r"\bbullish\b", r"\blong\b", r"\bupside\b", r"\bbreakout\b"]
-        sell_patterns = [r"\bsell\b", r"\bbearish\b", r"\bshort\b", r"\bdownside\b", r"\bbreakdown\b"]
+        buy_patterns = [r"\bbuy\b", r"\bbullish\b", r"\blong\b", r"\bupside\b", r"\bbreakout\b"]
+        sell_patterns = [
+            r"\bsell\b",
+            r"\bbearish\b",
+            r"\bshort\b",
+            r"\bdownside\b",
+            r"\bbreakdown\b",
+        ]
 
-        buy_count  = sum(1 for p in buy_patterns  if re.search(p, text_lower))
+        buy_count = sum(1 for p in buy_patterns if re.search(p, text_lower))
         sell_count = sum(1 for p in sell_patterns if re.search(p, text_lower))
 
         if buy_count > sell_count:
@@ -138,7 +149,7 @@ class BaseStrategyAgent(ABC):
         else:
             return Signal.HOLD
 
-    def safe_get(self, indicators: Dict[str, Any], key: str, default: float = 0.0) -> float:
+    def safe_get(self, indicators: dict[str, Any], key: str, default: float = 0.0) -> float:
         """
         Safely retrieve an indicator value with a fallback default.
 

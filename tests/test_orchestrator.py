@@ -19,28 +19,32 @@ import pytest
 # Skip entire file gracefully if langgraph not installed
 langgraph = pytest.importorskip("langgraph", reason="langgraph not installed")
 
-from src.agents.state import TradingState, AgentAnalysis, Signal
-from src.agents.orchestrator import MultiAgentOrchestrator
-
+from src.agents.orchestrator import MultiAgentOrchestrator  # noqa: E402
+from src.agents.state import AgentAnalysis, Signal, TradingState  # noqa: E402
 
 # ─────────────────────────────────────────────
 # Mock agents
 # ─────────────────────────────────────────────
 
+
 class MockAgent:
     def __init__(self, name: str, signal: Signal, confidence: float):
-        self.agent_name  = name
-        self._signal     = signal
+        self.agent_name = name
+        self._signal = signal
         self._confidence = confidence
 
     def analyze(self, state: TradingState) -> AgentAnalysis:
         return AgentAnalysis(
-            agent_name=self.agent_name, signal=self._signal,
-            confidence=self._confidence, reasoning=f"Mock: {self.agent_name}",
+            agent_name=self.agent_name,
+            signal=self._signal,
+            confidence=self._confidence,
+            reasoning=f"Mock: {self.agent_name}",
         )
+
 
 class FailingAgent:
     agent_name = "failing_agent"
+
     def analyze(self, state):
         raise RuntimeError("Simulated failure")
 
@@ -49,12 +53,18 @@ class FailingAgent:
 # Shared fixtures
 # ─────────────────────────────────────────────
 
+
 @pytest.fixture
 def indicators():
     return {
-        "price": 2410.0, "rsi": 25.0, "macd": -1.5,
-        "macd_signal": -2.2, "bb_position": 0.08, "volume_ratio": 1.3,
+        "price": 2410.0,
+        "rsi": 25.0,
+        "macd": -1.5,
+        "macd_signal": -2.2,
+        "bb_position": 0.08,
+        "volume_ratio": 1.3,
     }
+
 
 @pytest.fixture
 def market_data():
@@ -65,27 +75,28 @@ def market_data():
 # Tests
 # ─────────────────────────────────────────────
 
+
 def test_unanimous_buy_flows_through_graph(market_data, indicators):
     orch = MultiAgentOrchestrator(
         MockAgent("technical_analysis", Signal.BUY, 0.80),
-        MockAgent("momentum_strategy",  Signal.BUY, 0.75),
-        MockAgent("breakout_strategy",  Signal.BUY, 0.70),
+        MockAgent("momentum_strategy", Signal.BUY, 0.75),
+        MockAgent("breakout_strategy", Signal.BUY, 0.70),
     )
     result = orch.analyze("RELIANCE.NS", market_data, indicators)
 
-    assert result["final_signal"]     == Signal.BUY
-    assert result["agent_agreement"]  == 1.0
-    assert result["final_confidence"]  > 0.6
+    assert result["final_signal"] == Signal.BUY
+    assert result["agent_agreement"] == 1.0
+    assert result["final_confidence"] > 0.6
     assert result["technical_analysis"] is not None
-    assert result["momentum_analysis"]  is not None
-    assert result["breakout_analysis"]  is not None
+    assert result["momentum_analysis"] is not None
+    assert result["breakout_analysis"] is not None
 
 
 def test_all_disagree_gives_hold(market_data, indicators):
     orch = MultiAgentOrchestrator(
-        MockAgent("technical_analysis", Signal.BUY,  0.70),
-        MockAgent("momentum_strategy",  Signal.SELL, 0.70),
-        MockAgent("breakout_strategy",  Signal.HOLD, 0.60),
+        MockAgent("technical_analysis", Signal.BUY, 0.70),
+        MockAgent("momentum_strategy", Signal.SELL, 0.70),
+        MockAgent("breakout_strategy", Signal.HOLD, 0.60),
     )
     result = orch.analyze("RELIANCE.NS", market_data, indicators)
     assert result["final_signal"] == Signal.HOLD
@@ -106,14 +117,20 @@ def test_failing_agent_does_not_crash_pipeline(market_data, indicators):
 def test_all_required_state_fields_present(market_data, indicators):
     orch = MultiAgentOrchestrator(
         MockAgent("technical_analysis", Signal.BUY, 0.75),
-        MockAgent("momentum_strategy",  Signal.BUY, 0.75),
-        MockAgent("breakout_strategy",  Signal.BUY, 0.75),
+        MockAgent("momentum_strategy", Signal.BUY, 0.75),
+        MockAgent("breakout_strategy", Signal.BUY, 0.75),
     )
     result = orch.analyze("RELIANCE.NS", market_data, indicators)
 
     for field in [
-        "symbol", "final_signal", "final_confidence",
-        "final_reasoning", "agent_agreement", "errors",
-        "technical_analysis", "momentum_analysis", "breakout_analysis",
+        "symbol",
+        "final_signal",
+        "final_confidence",
+        "final_reasoning",
+        "agent_agreement",
+        "errors",
+        "technical_analysis",
+        "momentum_analysis",
+        "breakout_analysis",
     ]:
         assert field in result, f"Missing: {field}"
