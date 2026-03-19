@@ -1,5 +1,5 @@
 """
-Portfolio Risk Aggregator — Sprint 3
+Portfolio Risk Aggregator
 
 Tracks open positions and answers portfolio-level risk questions:
   - How much total capital is deployed?
@@ -8,16 +8,15 @@ Tracks open positions and answers portfolio-level risk questions:
   - What is today's P&L?
   - Do we have room for another trade?
 
-Design: In-memory store for Sprint 3. Sprint 5 (Trade Journal) will persist
-this to PostgreSQL. We design the interface now so Sprint 5 can swap the
-backend without changing callers.
+Design: In-memory store for now. In future, I will add PostgreSQL persistence.
+The interface is designed so callers don't need to know the backend.
 
 Key concept — the difference between:
-  - position_value:   how much it COSTS to hold the position (shares × price)
-  - capital_at_risk:  how much you LOSE if stop is hit (shares × (entry - stop))
+  - position_value:   how much it COSTS to hold the position (shares * price)
+  - capital_at_risk:  how much you LOSE if stop is hit (shares * (entry - stop))
 
-Never confuse these. A ₹50,000 position with a tight stop might only have
-₹1,000 at risk. That's what risk management actually tracks.
+Never confuse these. A 50,000 position with a tight stop might only have
+1,000 at risk. That's what risk management actually tracks.
 """
 
 from __future__ import annotations
@@ -30,7 +29,7 @@ import structlog
 
 logger = structlog.get_logger()
 
-# Mirrors the hard limit in validators.py — single source of truth for the value
+# Mirrors the hard limit in validators.py - single source of truth for the value
 MAX_OPEN_POSITIONS = 5
 MAX_DAILY_LOSS_PCT = 0.02
 
@@ -126,7 +125,7 @@ class PortfolioRisk:
     """
     Tracks open positions and provides portfolio-level risk metrics.
 
-    In Sprint 3 this is in-memory. Sprint 5 will add PostgreSQL persistence.
+    This is in-memory for now. In future, I will add PostgreSQL persistence.
     The interface is designed so callers don't need to know the backend.
 
     Usage:
@@ -177,7 +176,7 @@ class PortfolioRisk:
         Register a new open position.
 
         Raises ValueError if:
-          - Symbol already has an open position (no averaging down in Sprint 3)
+          - Symbol already has an open position (no averaging down for now)
           - Would exceed MAX_OPEN_POSITIONS
         """
         if position.symbol in self._positions:
@@ -288,7 +287,7 @@ class PortfolioRisk:
         return snap
 
     def get_sector_exposure(self, sector: str) -> float:
-        """Return current portfolio exposure (in ₹) to the given sector."""
+        """Return current portfolio exposure (in rupees) to the given sector."""
         return sum(
             p.position_value
             for p in self._positions.values()

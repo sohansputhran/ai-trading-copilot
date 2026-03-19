@@ -1,5 +1,5 @@
 """
-Position Sizer — Sprint 3
+Position Sizer
 
 Answers: "How many shares should I buy?"
 
@@ -173,9 +173,9 @@ class PositionSizer:
         shares = capital_to_risk / risk_per_share
 
         Example:
-            Portfolio = ₹500,000, risk_pct = 1%, entry = ₹2500, stop = ₹2450
-            capital_to_risk = ₹5,000
-            risk_per_share  = ₹50
+            Portfolio = 500,000, risk_pct = 1%, entry = 2500, stop = 2450
+            capital_to_risk = 5,000
+            risk_per_share  = 50
             shares          = 100
         """
         capital_to_risk = self.portfolio_value * self.risk_per_trade_pct
@@ -188,9 +188,9 @@ class PositionSizer:
 
         reasoning = (
             f"Fixed fractional sizing: risking {self.risk_per_trade_pct * 100:.1f}% "
-            f"of ₹{self.portfolio_value:,.0f} = ₹{capital_to_risk:,.0f}. "
-            f"Risk per share = ₹{risk_per_share:.2f} → {shares} shares "
-            f"(₹{position_value:,.0f} position, {fraction_used * 100:.1f}% of portfolio)."
+            f"of {self.portfolio_value:,.0f} = {capital_to_risk:,.0f}. "
+            f"Risk per share = {risk_per_share:.2f} → {shares} shares "
+            f"({position_value:,.0f} position, {fraction_used * 100:.1f}% of portfolio)."
         )
 
         logger.info(
@@ -274,7 +274,7 @@ class PositionSizer:
             f"half-Kelly×confidence={adjusted_kelly * 100:.2f}%. "
             f"Win prob={p:.2f} (blend of historical {self.historical_win_rate:.2f} "
             f"+ confidence {confidence:.2f}), b={b:.1f}. "
-            f"→ {shares} shares, ₹{capital_at_risk:,.0f} at risk "
+            f"→ {shares} shares, {capital_at_risk:,.0f} at risk "
             f"({fraction_used * 100:.1f}% of portfolio)."
         )
 
@@ -311,8 +311,8 @@ class PositionSizer:
         shares        = dollar_risk / stop_distance
 
         Why ATR for stop distance?
-            A ₹50 stock moving 50 paise is very different from a ₹5000 stock moving
-            ₹50. ATR normalizes for volatility — your stop is placed at a distance
+            A 50 stock moving 50 paise is very different from a 5000 stock moving
+            50. ATR normalizes for volatility — your stop is placed at a distance
             proportional to how much the stock actually moves day-to-day.
 
         If atr is not provided, falls back to fixed fractional.
@@ -331,10 +331,10 @@ class PositionSizer:
         fraction_used = position_value / self.portfolio_value
 
         reasoning = (
-            f"ATR-based sizing: ATR={atr:.2f} × {self.atr_risk_multiplier}x = "
-            f"₹{stop_distance:.2f} stop distance. "
-            f"Dollar risk target = ₹{dollar_risk:,.0f} → {shares} shares "
-            f"(₹{position_value:,.0f} position, {fraction_used * 100:.1f}% of portfolio)."
+            f"ATR-based sizing: ATR={atr:.2f} x {self.atr_risk_multiplier}x = "
+            f"{stop_distance:.2f} stop distance. "
+            f"Dollar risk target = {dollar_risk:,.0f} → {shares} shares "
+            f"({position_value:,.0f} position, {fraction_used * 100:.1f}% of portfolio)."
         )
 
         logger.info(

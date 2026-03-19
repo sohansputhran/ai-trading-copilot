@@ -1,10 +1,10 @@
 """
-Risk Management Engine — Sprint 3
+Risk Management Engine
 
 Three-layer risk system:
-  1. PositionSizer   — how many shares to buy
-  2. PreTradeValidator — does this trade pass hard limits?
-  3. PortfolioRisk   — does portfolio-level exposure allow it?
+  1. PositionSizer     - how many shares to buy
+  2. PreTradeValidator - does this trade pass hard limits?
+  3. PortfolioRisk     - does portfolio-level exposure allow it?
 """
 
 from .position_sizer import PositionSizer, SizingMethod, PositionSize
