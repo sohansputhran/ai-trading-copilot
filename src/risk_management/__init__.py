@@ -7,9 +7,9 @@ Three-layer risk system:
   3. PortfolioRisk     - does portfolio-level exposure allow it?
 """
 
-from .position_sizer import PositionSizer, SizingMethod, PositionSize
+from .portfolio import PortfolioRisk, PortfolioSnapshot, Position
+from .position_sizer import PositionSize, PositionSizer, SizingMethod
 from .validators import PreTradeValidator, ValidationResult
-from .portfolio import PortfolioRisk, Position, PortfolioSnapshot
 
 __all__ = [
     "PositionSizer",

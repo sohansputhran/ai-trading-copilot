@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Optional
 
 import structlog
 
@@ -56,7 +55,7 @@ class Position:
     shares: int
     position_value: float
     capital_at_risk: float
-    sector: Optional[str] = None
+    sector: str | None = None
     entry_time: datetime = field(default_factory=datetime.now)
     strategy: str = "multi_agent"
 
@@ -294,7 +293,7 @@ class PortfolioRisk:
             if p.sector == sector
         )
 
-    def get_position(self, symbol: str) -> Optional[Position]:
+    def get_position(self, symbol: str) -> Position | None:
         """Return open position for symbol, or None."""
         return self._positions.get(symbol)
 

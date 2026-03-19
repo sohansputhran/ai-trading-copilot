@@ -23,7 +23,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 import structlog
 
@@ -120,7 +119,7 @@ class PositionSizer:
         self,
         entry_price: float,
         stop_loss: float,
-        atr: Optional[float] = None,
+        atr: float | None = None,
         confidence: float = 0.5,
         reward_risk_ratio: float = 2.0,
     ) -> PositionSize:
@@ -299,7 +298,7 @@ class PositionSizer:
         self,
         entry_price: float,
         risk_per_share: float,
-        atr: Optional[float],
+        atr: float | None,
     ) -> PositionSize:
         """
         ATR-Based Sizing.

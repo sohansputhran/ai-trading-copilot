@@ -28,7 +28,6 @@ What makes a good validator?
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import structlog
 
@@ -101,7 +100,7 @@ class PreTradeValidator:
         open_positions: int,
         confidence: float,
         daily_pnl: float = 0.0,
-        sector: Optional[str] = None,
+        sector: str | None = None,
         sector_exposure: float = 0.0,
         capital_at_risk: float = 0.0,
     ) -> ValidationResult:

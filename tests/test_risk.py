@@ -12,17 +12,15 @@ Test categories:
 """
 
 import pytest
-from src.risk_management.position_sizer import PositionSizer, SizingMethod, PositionSize
+
+from src.risk_management.portfolio import PortfolioRisk, Position
+from src.risk_management.position_sizer import PositionSizer, SizingMethod
 from src.risk_management.validators import (
-    PreTradeValidator,
-    ValidationResult,
-    MAX_POSITION_PCT,
     MAX_DAILY_LOSS_PCT,
     MAX_OPEN_POSITIONS,
     MIN_CONFIDENCE_THRESHOLD,
+    PreTradeValidator,
 )
-from src.risk_management.portfolio import PortfolioRisk, Position, PortfolioSnapshot
-
 
 # ===========================================================================
 # Fixtures
