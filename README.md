@@ -4,11 +4,11 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![LangGraph](https://img.shields.io/badge/LangGraph-latest-green.svg)](https://github.com/langchain-ai/langgraph)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.29+-red.svg)](https://streamlit.io/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-red.svg)](https://streamlit.io/)
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-Free-yellow.svg)](https://huggingface.co/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](https://opensource.org/licenses/MIT)
 
-**An intelligent trading system that uses free AI to scan stocks and identify trading opportunities**
+**An intelligent trading system that uses free AI to scan stocks, identify trading opportunities, and simulate paper trades with full order lifecycle management**
 
 [Features](#-features) • [Demo](#-screenshots) • [Quick Start](#-quick-start) • [How It Works](#-how-it-works) • [Tech Stack](#-built-with)
 
@@ -18,23 +18,27 @@
 
 ## 🎯 What This Does
 
-Scans stocks using **100% free AI** to find potential trading opportunities based on technical indicators:
+Scans stocks using **100% free AI**, evaluates risk, and lets you **paper trade** — all in one dashboard:
 
-- 📊 **Calculates indicators** - RSI, MACD, Bollinger Bands, Volume analysis
-- 🤖 **AI analysis** - Meta Llama-3-8B explains why each stock is (or isn't) interesting
-- 📈 **Visual dashboard** - Beautiful Streamlit interface with interactive candlestick charts
-- 🎯 **Smart filtering** - Shows both interesting stocks AND why others were skipped
+- 📊 **Calculates indicators** - RSI, MACD, Bollinger Bands, EMA, ADX, ATR, Volume analysis
+- 🤖 **Multi-agent AI analysis** - 3 specialized LangGraph agents (Technical, Momentum, Breakout) run in parallel and vote on each stock
+- 🛡️ **Risk management** - Kelly Criterion / ATR-based position sizing, pre-trade hard limits, portfolio-level circuit breakers
+- 📋 **Paper trading** - One-click simulated order execution with live Yahoo Finance prices, slippage modeling, and SQLite persistence
+- 📌 **Open positions tracking** - Live P&L, R-multiple, and manual close buttons
+- ⚡ **Auto-trade mode** - Automatically paper-trades BUY signals above a configurable confidence threshold
 - 💯 **100% Free** - No API costs, uses open-source HuggingFace models
 
 **Example output:**
 ```
-✅ RELIANCE.NS - ₹2,847.50
-RSI: 31.24 (Oversold 🟢)
+✅ RELIANCE.NS - 2,847.50
+Multi-Agent Signal: 🟢 BUY  |  Confidence: 78%  |  Agreement: unanimous
 
-AI Analysis:
-INTERESTING: Yes
-SIGNAL: Oversold Reversal
-REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
+Technical Agent:  BUY  - RSI 29.4 oversold, MACD positive crossover
+Momentum Agent:   BUY  - EMA20 > EMA50, ADX 32 (strong trend)
+Breakout Agent:   HOLD - Volume 1.4× (no breakout confirmation)
+
+Risk: 25 shares  |  Capital at Risk: 4,271  |  ✅ Risk Check Passed
+Paper Fill: 25 × RELIANCE.NS @ 2,849.93 (slippage +2.43)
 ```
 
 ---
@@ -62,7 +66,7 @@ REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
 ![Price Chart](screenshots/price_chart.png)
 
 ### Multi-Agent Dashboard
-> *AI identifies stocks with clear technical signals*
+> *Per-agent signal cards, confidence bars, and full reasoning chain*
 
 ![Multi-Agent](screenshots/multi_agent.png)
 
@@ -92,7 +96,6 @@ REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
 * ✅ **Confidence scoring** - Weighted aggregation with agreement penalty prevents low-conviction trades
 * ✅ **Explainable decisions** - Every final signal includes per-agent reasoning breakdown
 * ✅ **Multi-agent dashboard** - Per-agent signal cards, confidence bars, and full reasoning chain in UI
-* ✅ **Multi-agent classification** - "Interesting" tab driven by 3-agent consensus, not single scanner
 
 **Sprint 3 - Complete ✅**
 
@@ -100,14 +103,24 @@ REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
 * ✅ **Pre-trade validator** - Hard limits gate: 5% max position, 2% daily loss circuit breaker, 5 max open positions, 30% sector cap
 * ✅ **Portfolio risk aggregator** - Tracks open positions, sector exposure, and daily P&L in real time
 * ✅ **Risk sidebar** - Live portfolio metrics panel in Streamlit: deployment %, risk %, position slots, sector exposure bars
-* ✅ **Per-trade risk verdict** - Every BUY signal shows suggested shares, capital at risk, and pass/fail verdict in the dashboard
-* ✅ **Configurable sizing** - Sizing method and risk parameters set via environment variables, no code changes needed
+* ✅ **Per-trade risk verdict** - Every BUY signal shows suggested shares, capital at risk, and pass/fail verdict
+
+**Sprint 4 - Complete ✅**
+
+* ✅ **Execution abstraction layer** - `BrokerInterface` strategy pattern decouples order routing from broker logic
+* ✅ **`RiskDecision` → `Order` contract** - Clean handoff from risk engine to execution layer
+* ✅ **`PaperBroker`** - Fills orders at live Yahoo Finance prices with configurable slippage (default 5 bps)
+* ✅ **`OrderManager`** - Idempotency guarantee: same `order_id` never submits twice; persists every state change
+* ✅ **SQLite persistence** - `data/trades.db` stores full order lifecycle (PENDING → FILLED → CLOSED/STOPPED_OUT)
+* ✅ **Open positions table** - Live view of all FILLED orders with one-click manual close + P&L display
+* ✅ **Auto-trade toggle** — Sidebar toggle + confidence slider; auto-trades BUY signals above threshold
+* ✅ **R-multiple reporting** — Each closed trade reports pnl, pnl_pct, and R-multiple (pnl / capital_at_risk)
+* ✅ **Order lifecycle state machine** — PENDING → FILLED → CLOSED / STOPPED_OUT with full timestamp trail
 
 ## 🔜 Upcoming Sprints
 
-* **Sprint 4:** Paper trading simulator (order lifecycle, idempotency, PostgreSQL persistence)
-* **Sprint 5:** Trade journal & analytics (performance metrics, equity curves)
-* **Sprint 6:** Production deployment (Docker, CI/CD)
+* **Sprint 5:** Trade journal & analytics (equity curves, win rate, avg R, drawdown metrics)
+* **Sprint 6:** Production deployment (Docker, CI/CD, monitoring)
 
 ---
 
@@ -120,6 +133,7 @@ REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
 ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
 ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 
 </div>
 
@@ -129,7 +143,8 @@ REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
 - **AI Model:** Meta Llama-3-8B-Instruct (free via HuggingFace)
 - **Data:** yfinance (market data), pandas, numpy
 - **UI:** Streamlit, Plotly (interactive charts)
-- **Dev Tools:** pytest, python-dotenv
+- **Persistence:** SQLite (`data/trades.db`), upgradeable to PostgreSQL in Sprint 5
+- **Dev Tools:** pytest, python-dotenv, structlog
 
 ---
 
@@ -137,7 +152,7 @@ REASON: RSI at 28 (oversold) with positive MACD suggests potential bounce.
 
 ### Prerequisites
 
-- Python 3.11+ 
+- Python 3.11+
 - pip
 - Free HuggingFace account
 
@@ -185,38 +200,58 @@ Open http://localhost:8501 in your browser! 🎉
 ### Architecture
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│              Streamlit Dashboard (UI)                    │
-│   - Stock selection & scan controls                      │
-│   - Interesting / Not Interesting tabs                   │
-│   - Per-agent signal cards + confidence bars             │
-│   - Interactive candlestick charts                       │
-└─────────────────────┬────────────────────────────────────┘
-                      │
-┌─────────────────────▼────────────────────────────────────┐
-│           Multi-Agent Orchestration Layer                │
-│              (LangGraph StateGraph)                      │
-│                                                          │
-│  ┌─────────────────┐  ┌──────────────┐  ┌────────────┐ │
-│  │  Technical      │  │  Momentum    │  │  Breakout  │ │
-│  │  Analysis Agent │  │  Strategy    │  │  Strategy  │ │
-│  │  RSI/MACD/BB    │  │  EMA + ADX   │  │  Vol + ATR │ │
-│  └────────┬────────┘  └──────┬───────┘  └─────┬──────┘ │
-│           └──────────────────┼─────────────────┘        │
-│                              │                           │
-│                   ┌──────────▼──────────┐               │
-│                   │     Aggregator      │               │
-│                   │  Weighted scoring + │               │
-│                   │  agreement penalty  │               │
-│                   └──────────┬──────────┘               │
-└──────────────────────────────┼───────────────────────────┘
-                               │
-┌──────────────────────────────▼───────────────────────────┐
-│                  Data Pipeline Layer                     │
-│   - Market data (Yahoo Finance / yfinance)               │
-│   - Technical indicators: RSI, MACD, BB, EMA, ADX, ATR  │
-│   - Scanner Agent (HuggingFace Llama-3-8B)               │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                  Streamlit Dashboard (UI)                    │
+│  - Stock selection & scan controls                           │
+│  - Interesting / Not Interesting tabs                        │
+│  - Per-agent signal cards + confidence bars                  │
+│  - Risk sidebar (deployment %, risk %, sector exposure)      │
+│  - Open positions table + manual close buttons               │
+│  - Auto-trade toggle + confidence threshold slider           │
+└───────────────────────┬──────────────────────────────────────┘
+                        │
+┌───────────────────────▼──────────────────────────────────────┐
+│              Multi-Agent Orchestration Layer                  │
+│                (LangGraph StateGraph)                        │
+│                                                              │
+│  ┌──────────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │  Technical       │  │  Momentum    │  │  Breakout     │  │
+│  │  Analysis Agent  │  │  Strategy    │  │  Strategy     │  │
+│  │  RSI/MACD/BB     │  │  EMA + ADX   │  │  Vol + ATR    │  │
+│  └────────┬─────────┘  └──────┬───────┘  └──────┬────────┘  │
+│           └───────────────────┼──────────────────┘           │
+│                               │                              │
+│                    ┌──────────▼──────────┐                   │
+│                    │      Aggregator     │                   │
+│                    │  Weighted scoring + │                   │
+│                    │  agreement penalty  │                   │
+│                    └──────────┬──────────┘                   │
+└───────────────────────────────┼──────────────────────────────┘
+                                │
+┌───────────────────────────────▼──────────────────────────────┐
+│                    Risk Management Layer                     │
+│  - PositionSizer (fixed fractional / Kelly / ATR-based)      │
+│  - PreTradeValidator (5% position cap, 2% loss circuit)      │
+│  - PortfolioRisk (open positions, sector exposure, P&L)      │
+└───────────────────────────────┬──────────────────────────────┘
+                                │
+┌───────────────────────────────▼──────────────────────────────┐
+│                     Execution Layer                          │
+│  ┌────────────────────┐    ┌──────────────────────────────┐  │
+│  │    OrderManager    │    │        PaperBroker           │  │
+│  │  - Idempotency     │───▶│  - Live yfinance price fetch │  │
+│  │  - SQLite persist  │    │  - Slippage simulation (5bp) │  │
+│  │  - Route to broker │    │  - PortfolioRisk sync        │  │
+│  └────────────────────┘    └──────────────────────────────┘  │
+│               Persists to: data/trades.db (SQLite)           │
+└───────────────────────────────┬──────────────────────────────┘
+                                │
+┌───────────────────────────────▼──────────────────────────────┐
+│                    Data Pipeline Layer                       │
+│  - Market data (Yahoo Finance / yfinance)                    │
+│  - Technical indicators: RSI, MACD, BB, EMA, ADX, ATR       │
+│  - Scanner Agent (HuggingFace Llama-3-8B)                    │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ### Step-by-Step Flow
@@ -232,20 +267,10 @@ data = collector.fetch_data("RELIANCE.NS", period="3mo")
 ```python
 calculator = SimpleTechnicalIndicators()
 data_with_indicators = calculator.calculate_all(data)
-# Adds: RSI, MACD, Bollinger Bands, Volume MA
+# Adds: RSI, MACD, Bollinger Bands, EMA, ADX, ATR, Volume MA
 ```
 
-**3. AI Analysis (with fallback)**
-```python
-scanner = MarketScanner()
-results = scanner.scan(["RELIANCE.NS", "TCS.NS", "INFY.NS"])
-# For each stock:
-#   - Tries AI analysis first
-#   - Falls back to rules if AI fails
-#   - Returns ALL results with reasoning
-```
-
-**3b. Multi-Agent Analysis**
+**3. Multi-Agent Analysis**
 ```python
 orchestrator = MultiAgentOrchestrator(
     technical_agent=TechnicalAnalysisAgent(llm_client=...),
@@ -257,13 +282,36 @@ multi_result = orchestrator.analyze(symbol, market_data, indicators)
 # final_signal: BUY/SELL → "Interesting" | HOLD → "Not Interesting"
 ```
 
-**4. Display in Dashboard**
+**4. Risk Assessment**
+```python
+size = position_sizer.calculate(entry_price, stop_loss, atr, confidence)
+validation = validator.validate(symbol, size.position_value, portfolio_value, ...)
+# Hard limits: 5% max position, 2% daily loss, 5 open positions, 30% sector
+```
+
+**5. Paper Trade Execution**
+```python
+manager = OrderManager(broker=PaperBroker(portfolio), db_path="data/trades.db")
+order = manager.submit(risk_decision, order_id="abc-123")
+# - Idempotency: same order_id returns existing order without re-submitting
+# - PaperBroker re-fetches live price at fill time (not scan time)
+# - Applies 5 bps slippage (adverse direction)
+# - Persists PENDING → FILLED to SQLite
+
+# Close a position:
+closed = manager.close_position(order_id, reason="manual")
+# Calculates: gross_pnl, pnl_pct, r_multiple (pnl / capital_at_risk)
+```
+
+**6. Dashboard Display**
 ```bash
 streamlit run streamlit_app/app.py
 # Shows:
 #   - Tab 1: Interesting stocks (BUY/SELL from multi-agent system)
 #   - Tab 2: Not Interesting (HOLD or low-confidence signals)
-#   - Each stock: per-agent breakdown + confidence + full reasoning
+#   - Each stock: per-agent breakdown + confidence + risk assessment + Paper Trade button
+#   - Open positions table with live P&L and close buttons
+#   - Auto-trade toggle in sidebar
 ```
 
 ---
@@ -288,10 +336,19 @@ streamlit run streamlit_app/app.py
 - **Price near lower:** Potentially oversold
 - **Bands squeeze:** Low volatility (breakout coming)
 
+### EMA Crossover (Momentum Agent)
+- **EMA20 > EMA50:** Short-term trend above long-term → bullish
+- **EMA20 < EMA50:** Short-term trend below long-term → bearish
+- **ADX > 25:** Trend strength gate (filters choppy markets)
+
+### ATR (Average True Range)
+- **Used for:** Stop-loss placement (1.5× ATR below entry) and position sizing
+- **Higher ATR:** More volatile stock → smaller position size
+
 ### Volume Ratio
-- **> 2.0x:** Unusual activity (institutional interest?)
-- **1.0-2.0x:** Normal trading
-- **< 1.0x:** Below average (low interest)
+- **> 2.0×:** Unusual activity (institutional interest?)
+- **1.0-2.0×:** Normal trading
+- **< 1.0×:** Below average (low interest)
 
 ---
 
@@ -324,20 +381,50 @@ except:
 # Scan always completes!
 ```
 
-**Rule-based logic uses:**
-- RSI thresholds (< 30, > 70)
-- MACD signals (positive momentum)
-- Volume spikes (> 2x average)
-- Combined conditions (e.g., oversold + positive MACD)
+---
+
+## 📋 Paper Trading System (Sprint 4)
+
+### Order Lifecycle
+
+```
+PENDING ──> FILLED ──> CLOSED       (manual exit or take-profit)
+                  └──> STOPPED_OUT  (stop-loss hit)
+        └──> REJECTED               (could not fetch live price)
+        └──> CANCELLED              (user cancelled before fill)
+```
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **Re-fetch price at fill time** | Prices move between scan (10:30) and click (10:35). The fill uses the live price, not the stale scan price. |
+| **Slippage simulation (5 bps)** | Real market orders don't fill at mid-price. BUYs pay slightly above, SELLs receive slightly below. |
+| **Idempotency via `order_id`** | Prevents duplicate fills if the button is double-clicked or the network retries. Same ID → same order returned unchanged. |
+| **SQLite for Sprint 4** | No PostgreSQL server required. Schema is written for PostgreSQL compatibility — just swap the connection string in Sprint 5. |
+| **Separate `PaperBroker` and `OrderManager`** | Single responsibility. The broker fills orders; it has no DB knowledge. The manager handles DB; it has no execution logic. |
+
+### R-Multiple
+
+Every closed trade reports an **R-multiple** — the gold standard in professional trading:
+
+```
+R-multiple = gross_pnl / capital_at_risk
+
++2R = made 2× what was risked (excellent)
++1R = made exactly what was risked (good)
+-1R = stop-loss was hit exactly (expected worst case)
+< -1R = slippage pushed loss beyond stop
+```
 
 ---
 
 ## 🧪 Testing
 
 ### Unit tests — no external dependencies needed
-Tests state schema, agent signal logic, aggregator math, and all risk engine logic. Runs instantly with just `pytest` and `structlog`.
+Tests state schema, agent signal logic, aggregator math, risk engine logic, and the full execution layer (OrderManager + PaperBroker with a mock broker and in-memory SQLite).
 ```bash
-pytest tests/test_agents.py tests/test_risk.py -v
+pytest tests/test_agents.py tests/test_risk.py tests/test_execution.py -v
 ```
 
 ### Integration tests — requires LangGraph
@@ -370,6 +457,11 @@ ai-trading-copilot/
 │   ├── data_pipeline/
 │   │   ├── collector.py            # Fetches stock data (Yahoo Finance)
 │   │   └── indicators.py           # Technical indicators (manual calculation)
+│   ├── execution/                  # ← NEW in Sprint 4
+│   │   ├── broker.py               # BrokerInterface + Order + RiskDecision dataclasses
+│   │   ├── paper_broker.py         # PaperBroker: live yfinance price + slippage
+│   │   ├── order_manager.py        # Idempotency + SQLite persistence + routing
+│   │   └── schema.sql              # PostgreSQL-compatible trades table schema
 │   ├── risk_management/
 │   │   ├── position_sizer.py       # Kelly / fixed fractional / ATR sizing
 │   │   ├── validators.py           # Pre-trade hard limit gate
@@ -377,13 +469,17 @@ ai-trading-copilot/
 │   └── utils/
 │       └── config.py               # Loads environment variables
 ├── streamlit_app/
-│   ├── app.py                      # Dashboard UI
+│   ├── app.py                      # Dashboard UI (scanning, multi-agent, risk, paper trading)
 │   └── components/
 │       └── risk_sidebar.py         # Portfolio risk sidebar component
 ├── tests/
-│   ├── test_agents.py              # Unit tests (no external deps)
+│   ├── test_agents.py              # Unit tests for agents & state (no external deps)
 │   ├── test_orchestrator.py        # Integration tests (requires LangGraph)
-│   └── test_risk.py                # Risk engine unit tests (no external deps)
+│   ├── test_risk.py                # Risk engine unit tests (no external deps)
+│   └── test_execution.py           # Execution layer unit tests (mock broker, :memory: DB)
+├── data/
+│   └── trades.db                   # SQLite paper trade history (auto-created on first run)
+├── configs/                        # Config files
 ├── requirements.txt                # Python dependencies
 ├── .env.example                    # Environment template
 └── README.md                       # This file
@@ -398,23 +494,25 @@ ai-trading-copilot/
 This project showcases:
 
 ✅ **AI Engineering** - Multi-agent systems, prompt engineering, model selection & fallback strategies  
+✅ **Software Architecture** - Strategy pattern (BrokerInterface), clean layer separation, idempotency design  
 ✅ **Risk Management** - Kelly Criterion, position sizing algorithms, circuit breakers, portfolio-level constraints  
 ✅ **Production Code** - Error handling, fallbacks, logging, type hints, modular design  
 ✅ **Data Engineering** - Real-time pipelines, caching strategies, data validation  
 ✅ **Full-Stack Development** - Backend (Python), Frontend (Streamlit), API integration  
-✅ **Problem Solving** - Built free AI solution when paid APIs weren't viable  
-✅ **Domain Knowledge** - Financial indicators, technical analysis, risk-reward frameworks  
+✅ **Database Design** - SQLite persistence with PostgreSQL-compatible schema, state machine modeling  
+✅ **Domain Knowledge** - Financial indicators, technical analysis, risk-reward frameworks, order lifecycle  
 
-**Tech Stack:** Python, LangChain, LangGraph, HuggingFace, Streamlit, Pandas, NumPy, Plotly, Git
+**Tech Stack:** Python, LangChain, LangGraph, HuggingFace, Streamlit, Pandas, NumPy, Plotly, SQLite, Git
 
 ### Learning Journey
 
-Built over **6 weeks** as part of 12-week AI Engineering learning project:
-- Sprint 1: Real-time data pipelines, technical indicators, first LangGraph agent
-- Sprint 2: Multi-agent orchestration, parallel StateGraph, confidence scoring, explainable AI
-- Sprint 3: Risk algorithms (Kelly Criterion, fixed fractional, ATR-based sizing), pre-trade validation, portfolio-level circuit breakers
+Built over **8 weeks** as part of a 12-week AI Engineering learning project:
+- **Sprint 1:** Real-time data pipelines, technical indicators, HuggingFace AI scanner
+- **Sprint 2:** Multi-agent orchestration, parallel LangGraph StateGraph, confidence scoring, explainable AI
+- **Sprint 3:** Risk algorithms (Kelly Criterion, fixed fractional, ATR-based sizing), pre-trade validation, portfolio-level circuit breakers
+- **Sprint 4:** Execution layer (BrokerInterface, PaperBroker, OrderManager), idempotency, SQLite persistence, auto-trade mode
 - Implemented production-grade error handling and fallback chains throughout
-- 57 passing tests (unit + integration) covering state, agents, orchestration, and risk logic
+- 70+ passing tests (unit + integration) covering state, agents, orchestration, risk logic, and execution
 
 ---
 
@@ -434,6 +532,7 @@ Built over **6 weeks** as part of 12-week AI Engineering learning project:
 - **Technical indicators** are backward-looking (past ≠ future)
 - **AI can make mistakes** - use as one input, not sole decision maker
 - **Open-source models** less sophisticated than paid alternatives (Claude, GPT-4)
+- **Paper trading** simulates execution but cannot guarantee real-world fill prices
 
 ---
 
@@ -447,6 +546,8 @@ Built over **6 weeks** as part of 12-week AI Engineering learning project:
 | Token error | Invalid/expired token | Regenerate at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) |
 | No data for stock | Wrong symbol format | Use `.NS` for NSE, `.BO` for BSE (e.g., `RELIANCE.NS`) |
 | Module not found | Dependencies not installed | Run `pip install -r requirements.txt` |
+| Paper Trade button disabled | Risk check failed | Check risk verdict above the button for rejection reason |
+| `data/trades.db` missing | First run only | Auto-created when you click Paper Trade for the first time |
 
 ---
 
@@ -470,6 +571,7 @@ Contributions welcome! This is a learning project, but improvements are apprecia
 - 🌍 Support more exchanges (US stocks via Yahoo)
 - 📊 Add sentiment analysis (news, social media)
 - 🤖 Improve AI prompts for better analysis
+- 🗄️ Upgrade persistence to PostgreSQL (Sprint 5 prep)
 
 ---
 
@@ -482,35 +584,38 @@ Contributions welcome! This is a learning project, but improvements are apprecia
 - [x] Streamlit dashboard
 - [x] Rule-based fallback
 
-### Sprint 2: Multi-Agent System (Weeks 3-4) ✅
+### Sprint 2: Multi-Agent System ✅ (Complete)
 - [x] LangGraph orchestrator (parallel fan-out StateGraph)
 - [x] Specialized agents (Technical, Momentum, Breakout)
 - [x] Agent reasoning visualization in dashboard
 - [x] Confidence scoring + agreement penalty aggregator
 - [x] Multi-agent classification (overrides Sprint 1 scanner)
 
-### Sprint 3: Risk Management (Weeks 5-6) ✅
+### Sprint 3: Risk Management ✅ (Complete)
 - [x] Position sizing engine (fixed fractional, Kelly, ATR-based)
 - [x] Pre-trade validator with hard limits (5% position, 2% daily loss, 5 max positions, 30% sector)
 - [x] Portfolio risk aggregator (open positions, sector exposure, daily P&L)
 - [x] Risk sidebar panel in Streamlit dashboard
 
-### Sprint 4: Paper Trading (Weeks 7-8)
-- [ ] Paper trading simulator (order lifecycle state machine)
-- [ ] Order manager with idempotency guarantee
-- [ ] PostgreSQL persistence for trades
-- [ ] Auto-trade + manual override toggle in dashboard
+### Sprint 4: Paper Trading ✅ (Complete)
+- [x] Execution abstraction layer (`BrokerInterface` strategy pattern)
+- [x] `PaperBroker` — live price fetch + slippage simulation
+- [x] `OrderManager` — idempotency + SQLite persistence
+- [x] Order lifecycle state machine (PENDING → FILLED → CLOSED / STOPPED_OUT)
+- [x] Open positions table with manual close + P&L display
+- [x] Auto-trade toggle + confidence threshold slider
+- [x] R-multiple reporting on closed trades
 
-### Sprint 5: Trade Journal (Weeks 9-10)
-- [ ] PostgreSQL database
-- [ ] Automated trade logging
-- [ ] Performance analytics
-- [ ] Equity curves & metrics
+### Sprint 5: Trade Journal (Coming Soon)
+- [ ] Equity curve visualization
+- [ ] Win rate, average R, Sharpe ratio, max drawdown metrics
+- [ ] Trade history page with filtering & export
+- [ ] PostgreSQL migration (swap SQLite connection string)
 
-### Sprint 6: Production (Weeks 11-12)
+### Sprint 6: Production (Coming Soon)
 - [ ] Docker containerization
 - [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Monitoring & logging
+- [ ] Monitoring & logging (structlog dashboards)
 - [ ] Deployment documentation
 
 ---
@@ -535,20 +640,26 @@ Contributions welcome! This is a learning project, but improvements are apprecia
 - [Plotly Charts](https://plotly.com/python/)
 - [Streamlit Docs](https://docs.streamlit.io/)
 
+### Trading & Risk
+- [Van Tharp - R-Multiple](https://www.vantharp.com/tharp-concepts/r-multiples)
+- [Kelly Criterion Explained](https://www.investopedia.com/articles/trading/04/091504.asp)
+- [Position Sizing Fundamentals](https://www.investopedia.com/terms/p/positionsizing.asp)
+
 ---
 
 ## 📝 Blog Posts & Articles
 
 *Coming soon! I'll be writing about:*
-- Building an AI Trading Scanner with LangGraph
+- Building a Multi-Agent AI Trading Scanner with LangGraph
+- Paper Trading Architecture: Idempotency, Slippage & SQLite
 - Using Free AI Models for Stock Analysis
-- From Idea to Production: 12-Week Learning Journey
+- From Idea to Production: 12-Week AI Engineering Journey
 
 ---
 
 ## 📄 License
 
-MIT License - Feel free to use for learning and personal projects!
+MIT License — Feel free to use for learning and personal projects!
 
 See [LICENSE](LICENSE) file for details.
 
