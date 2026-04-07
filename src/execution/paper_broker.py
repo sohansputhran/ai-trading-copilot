@@ -145,9 +145,7 @@ class PaperBroker(BrokerInterface):
         order.pnl = round(gross_pnl, 2)
         order.pnl_pct = round(pnl_pct, 2)
         order.r_multiple = round(r_multiple, 2)
-        order.status = (
-            OrderStatus.STOPPED_OUT if reason == "stop_loss" else OrderStatus.CLOSED
-        )
+        order.status = OrderStatus.STOPPED_OUT if reason == "stop_loss" else OrderStatus.CLOSED
 
         # Remove from portfolio risk tracking.
         # PortfolioRisk.close_position() requires exit_price to record realized P&L.

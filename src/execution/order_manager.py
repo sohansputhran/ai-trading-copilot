@@ -139,9 +139,7 @@ class OrderManager:
     def get_all_orders(self) -> list[Order]:
         """Return all orders regardless of status."""
         with self._db_conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM trades ORDER BY created_at DESC"
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM trades ORDER BY created_at DESC").fetchall()
         return [self._row_to_order(r) for r in rows]
 
     # ------------------------------------------------------------------
@@ -246,9 +244,7 @@ class OrderManager:
 
     def _load_order(self, order_id: str) -> Order | None:
         with self._db_conn() as conn:
-            row = conn.execute(
-                "SELECT * FROM trades WHERE order_id = ?", (order_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM trades WHERE order_id = ?", (order_id,)).fetchone()
         return self._row_to_order(row) if row else None
 
     def _query_orders_by_status(self, status: OrderStatus) -> list[Order]:
