@@ -42,6 +42,15 @@ try:
 except ImportError:
     MULTI_AGENT_AVAILABLE = False
 
+# Paper trading
+try:
+    from src.execution.broker import OrderSide, RiskDecision
+    from src.execution.order_manager import OrderManager
+    from src.execution.paper_broker import PaperBroker
+    PAPER_TRADING_AVAILABLE = True
+except ImportError:
+    PAPER_TRADING_AVAILABLE = False
+
 import os
 
 from src.agents.state import Signal
@@ -128,9 +137,152 @@ def render_multi_agent_tab(multi_result: dict):
             for e in errors:
                 st.caption(e)
 
-# ─────────────────────────────────────────────
-# Risk engine - initialised once per session
-# ─────────────────────────────────────────────
+# Paper trading UI helpers
+
+def render_open_positions_table() -> None:
+    """Show all open paper positions above the scan results."""
+    if not PAPER_TRADING_AVAILABLE:
+        return
+
+    import pandas as pd
+
+    order_manager = st.session_state.get("order_manager")
+    if order_manager is None:
+        return
+
+    open_positions = order_manager.get_open_positions()
+
+    st.subheader("📌 Open Paper Positions")
+
+    if not open_positions:
+        st.info("No open positions. Use the **Paper Trade** button on a BUY signal to open one.")
+        return
+
+    rows = []
+    for o in open_positions:
+        rows.append({
+            "Symbol":            o.symbol,
+            "Shares":            o.shares,
+            "Fill Price (₹)":    f"₹{o.fill_price:,.2f}" if o.fill_price else "—",
+            "Stop Loss (₹)":     f"₹{o.stop_loss:,.2f}",
+            "Take Profit (₹)":   f"₹{o.take_profit:,.2f}",
+            "Capital at Risk":   f"₹{o.capital_at_risk:,.0f}",
+            "Confidence":        f"{o.confidence:.0%}",
+            "Strategy":          o.strategy,
+            "Order ID":          o.order_id[:8] + "…",
+        })
+
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    st.caption("Close a position:")
+    close_cols = st.columns(min(len(open_positions), 5))
+    for idx, o in enumerate(open_positions):
+        with close_cols[idx % 5]:
+            if st.button(f"Close {o.symbol}", key=f"close_{o.order_id}"):
+                with st.spinner(f"Closing {o.symbol}..."):
+                    closed = order_manager.close_position(o.order_id, reason="manual")
+                if closed and closed.pnl is not None:
+                    pnl_color = "green" if closed.pnl >= 0 else "red"
+                    st.markdown(
+                        f"**{o.symbol}** closed | "
+                        f"P&L: <span style='color:{pnl_color}'>₹{closed.pnl:,.2f} "
+                        f"({closed.pnl_pct:+.2f}%)</span> | "
+                        f"{closed.r_multiple:+.2f}R",
+                        unsafe_allow_html=True,
+                    )
+                st.rerun()
+
+    st.markdown("---")
+
+
+def render_paper_trade_button(symbol: str, result: dict, position_size, validation) -> None:
+    """Render Paper Trade button + auto-trade logic for a single BUY stock card."""
+    if not PAPER_TRADING_AVAILABLE:
+        return
+
+    order_manager = st.session_state.get("order_manager")
+    if order_manager is None:
+        return
+
+    # Check if this symbol already has an open position
+    open_symbols = {o.symbol for o in order_manager.get_open_positions()}
+    if symbol in open_symbols:
+        st.info("📌 Position already open for this symbol.")
+        return
+
+    indicators = result.get("indicators", {})
+    entry_price = result.get("price", 0.0)
+    atr = indicators.get("atr", None)
+    stop_loss = (
+        entry_price - (atr * 1.5)
+        if (atr and atr > 0 and entry_price > 0)
+        else entry_price * 0.97
+    )
+    take_profit = entry_price * (1 + 2 * ((entry_price - stop_loss) / entry_price))
+
+    multi_agent_data = result.get("multi_agent") or {}
+    final_signal = multi_agent_data.get("final_signal")
+    confidence = multi_agent_data.get("final_confidence", 0.0)
+    reasoning = multi_agent_data.get("final_reasoning", "")
+
+    decision = RiskDecision(
+        symbol=symbol,
+        side=OrderSide.BUY,
+        shares=position_size.shares,
+        entry_price=entry_price,
+        stop_loss=stop_loss,
+        take_profit=take_profit,
+        confidence=confidence,
+        strategy="multi_agent",
+        agent_reasoning=reasoning,
+        capital_at_risk=position_size.capital_at_risk,
+    )
+
+    auto_enabled   = st.session_state.get("auto_trade_enabled", False)
+    auto_threshold = st.session_state.get("auto_trade_threshold", 1.0)
+    auto_key       = f"auto_traded_{symbol}"
+
+    # Auto-trade path — fires once per scan session per symbol
+    if auto_enabled and confidence >= auto_threshold and auto_key not in st.session_state:
+        order = order_manager.submit(decision)
+        st.session_state[auto_key] = order.order_id
+        if order.fill_price:
+            st.success(
+                f"⚡ Auto paper trade executed: {order.shares} × {symbol} "
+                f"@ ₹{order.fill_price:,.2f} (slippage ₹{order.slippage:+.2f})"
+            )
+        else:
+            st.error(f"⚡ Auto-trade rejected for {symbol} — could not fetch live price.")
+        return
+
+    # Manual button path
+    btn_col, status_col = st.columns([1, 3])
+    with btn_col:
+        clicked = st.button(
+            "📋 Paper Trade",
+            key=f"paper_trade_{symbol}",
+            type="primary",
+            disabled=not validation.approved,
+            help=(
+                "Execute a paper trade at the current live price"
+                if validation.approved
+                else "Risk check failed — cannot paper trade"
+            ),
+        )
+    if clicked:
+        with st.spinner(f"Fetching live price for {symbol}..."):
+            order = order_manager.submit(decision)
+        with status_col:
+            if order.fill_price:
+                st.success(
+                    f"✅ Filled {order.shares} × {symbol} @ ₹{order.fill_price:,.2f} "
+                    f"(slippage ₹{order.slippage:+.2f})"
+                )
+            else:
+                st.error(f"❌ Order rejected — could not fetch live price for {symbol}.")
+
+
+# Session state - initialised once per session
 
 if "portfolio_risk" not in st.session_state:
     st.session_state.portfolio_risk = PortfolioRisk(portfolio_value=PORTFOLIO_VALUE)
@@ -141,20 +293,37 @@ if "position_sizer" not in st.session_state:
 if "validator" not in st.session_state:
     st.session_state.validator = PreTradeValidator()
 
-# Page config
+# paper trading objects
+if PAPER_TRADING_AVAILABLE:
+    if "order_manager" not in st.session_state:
+        _paper_broker = PaperBroker(
+            portfolio=st.session_state.portfolio_risk,
+            slippage_bps=5,
+        )
+        st.session_state.order_manager = OrderManager(
+            broker=_paper_broker,
+            db_path="data/trades.db",
+        )
+    if "auto_trade_enabled" not in st.session_state:
+        st.session_state.auto_trade_enabled = False
+    if "auto_trade_threshold" not in st.session_state:
+        st.session_state.auto_trade_threshold = 0.75
+
+# Page config & title
+
 st.set_page_config(
     page_title="AI Trading Scanner",
     layout="wide"
 )
 
-# Title
 st.title("AI Trading Scanner")
 if SCANNER_TYPE == "AI":
     st.markdown("*Powered by free HuggingFace AI*")
 else:
     st.markdown("*Using rule-based analysis (no AI needed)*")
 
-# Sidebar - Input
+# Sidebar
+
 st.sidebar.header("Scanner Settings")
 
 # Risk sidebar — always visible
@@ -183,7 +352,36 @@ else:
 # Scan button
 scan_button = st.sidebar.button("Run Scanner", type="primary")
 
+# auto-trade toggle (bottom of sidebar)
+if PAPER_TRADING_AVAILABLE:
+    st.sidebar.divider()
+    st.sidebar.subheader("⚡ Auto-Trade")
+    auto_enabled = st.sidebar.toggle(
+        "Auto-trade BUY signals",
+        value=st.session_state.auto_trade_enabled,
+        key="auto_trade_toggle",
+        help=(
+            "When ON, BUY signals that exceed the confidence threshold are paper "
+            "traded automatically. When OFF, use the manual 'Paper Trade' button."
+        ),
+    )
+    st.session_state.auto_trade_enabled = auto_enabled
+    if auto_enabled:
+        threshold = st.sidebar.slider(
+            "Min confidence",
+            min_value=0.60,
+            max_value=0.95,
+            value=st.session_state.auto_trade_threshold,
+            step=0.05,
+            key="auto_trade_threshold_slider",
+        )
+        st.session_state.auto_trade_threshold = threshold
+        st.sidebar.caption(f"Auto-trading BUYs ≥ {threshold:.0%} confidence")
+    else:
+        st.session_state.auto_trade_threshold = 1.0
+
 # Main content
+
 if scan_button:
     if not symbols:
         st.error("Please enter at least one stock symbol!")
@@ -243,7 +441,7 @@ if scan_button:
                             result["interesting"] = (
                                 final_signal.value in ("BUY", "SELL")
                             )
-                    except Exception as e:
+                    except Exception:
                         result["multi_agent"] = None
                         # Keep single scanner classification on failure
                 else:
@@ -259,7 +457,7 @@ if scan_button:
         interesting_stocks = [r for r in results if r.get('interesting', False)]
         not_interesting_stocks = [r for r in results if not r.get('interesting', False)]
 
-        # Display summary
+        # Summary metrics
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Total Scanned", len(results))
@@ -268,7 +466,9 @@ if scan_button:
         with col3:
             st.metric("Not Interesting", len(not_interesting_stocks))
 
-        # Create tabs for interesting vs not interesting
+        # open positions table - shown before scan results
+        render_open_positions_table()
+
         tab1, tab2 = st.tabs(["Interesting Stocks", "Not Interesting"])
 
         with tab1:
@@ -290,14 +490,11 @@ if scan_button:
                             # RSI with color
                             rsi_val = indicators['rsi']
                             if rsi_val < 30:
-                                rsi_color = "🟢"  # Oversold
-                                rsi_label = "Oversold"
+                                rsi_color, rsi_label = "🟢", "Oversold"
                             elif rsi_val > 70:
-                                rsi_color = "🔴"  # Overbought
-                                rsi_label = "Overbought"
+                                rsi_color, rsi_label = "🔴", "Overbought"
                             else:
-                                rsi_color = "🟡"  # Neutral
-                                rsi_label = "Neutral"
+                                rsi_color, rsi_label = "🟡", "Neutral"
 
                             st.metric("RSI", f"{rsi_val:.2f}", f"{rsi_color} {rsi_label}")
 
@@ -309,13 +506,12 @@ if scan_button:
                             st.markdown("### AI Analysis")
                             st.success(result['analysis'].replace('\n', '\n\n'))
 
-                        # Add a chart
+                        # Price chart
                         st.markdown("### Price Chart (Last 3 Months)")
 
                         # Fetch data for chart
                         collector = MarketDataCollector()
                         calc = SimpleTechnicalIndicators()
-
                         try:
                             price_data = collector.fetch_data(result['symbol'], period="3mo")
                             data_with_ind = calc.calculate_all(price_data)
@@ -340,7 +536,6 @@ if scan_button:
                                 name='BB Upper',
                                 line=dict(dash='dash', color='gray')
                             ))
-
                             fig.add_trace(go.Scatter(
                                 x=data_with_ind.index,
                                 y=data_with_ind['BB_Lower'],
@@ -348,25 +543,22 @@ if scan_button:
                                 line=dict(dash='dash', color='gray'),
                                 fill='tonexty'
                             ))
-
                             fig.update_layout(
                                 height=400,
                                 xaxis_title="Date",
                                 yaxis_title="Price (Rupee)",
                                 hovermode='x unified'
                             )
-
                             st.plotly_chart(fig, width="stretch")
-
                         except Exception as e:
                             st.warning(f"Could not load chart: {str(e)}")
 
-                        # Multi-agent analysis tab
+                        # Multi-agent analysis
                         st.markdown("---")
                         st.markdown("### 🤖 Multi-Agent Analysis")
                         render_multi_agent_tab(result.get("multi_agent"))
 
-                        # Risk assessment — only for BUY signals
+                        # Risk assessment — BUY signals only
                         multi_agent_data = result.get("multi_agent")
                         final_signal = multi_agent_data.get("final_signal") if multi_agent_data else None
                         final_confidence = multi_agent_data.get("final_confidence", 0.0) if multi_agent_data else 0.0
@@ -427,7 +619,17 @@ if scan_button:
                             with st.expander("Sizing reasoning", expanded=False):
                                 st.caption(_size.reasoning)
 
-                            # Update sidebar with this stock's proposed trade
+                            # Paper Trade button
+                            st.markdown("---")
+                            st.markdown("### 📋 Paper Trade")
+                            render_paper_trade_button(
+                                symbol=result["symbol"],
+                                result=result,
+                                position_size=_size,
+                                validation=_validation,
+                            )
+
+                            # Update sidebar with proposed trade
                             with st.sidebar:
                                 render_risk_sidebar(
                                     snapshot=_snap,
@@ -460,20 +662,16 @@ if scan_button:
 
                         with col1:
                             st.markdown("### Indicators")
-
                             indicators = result['indicators']
 
                             # RSI with color
                             rsi_val = indicators['rsi']
                             if rsi_val < 30:
-                                rsi_color = "🟢"
-                                rsi_label = "Oversold"
+                                rsi_color, rsi_label = "🟢", "Oversold"
                             elif rsi_val > 70:
-                                rsi_color = "🔴"
-                                rsi_label = "Overbought"
+                                rsi_color, rsi_label = "🔴", "Overbought"
                             else:
-                                rsi_color = "🟡"
-                                rsi_label = "Neutral"
+                                rsi_color, rsi_label = "🟡", "Neutral"
 
                             st.metric("RSI", f"{rsi_val:.2f}", f"{rsi_color} {rsi_label}")
                             st.metric("MACD", f"{indicators['macd']:.2f}")
