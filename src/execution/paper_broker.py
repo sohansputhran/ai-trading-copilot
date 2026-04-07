@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 import yfinance as yf
 
@@ -168,7 +167,7 @@ class PaperBroker(BrokerInterface):
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _fetch_live_price(self, symbol: str) -> Optional[float]:
+    def _fetch_live_price(self, symbol: str) -> float | None:
         """Fetch the most recent close price from Yahoo Finance.
 
         Uses period='1d' for speed — this gives us the latest available price

@@ -14,8 +14,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
-
 
 # Enums
 
@@ -129,22 +127,22 @@ class Order:
     created_at: datetime = field(default_factory=datetime.utcnow)
 
     # Fill details (populated by broker)
-    fill_price: Optional[float] = None
-    fill_timestamp: Optional[datetime] = None
-    slippage: Optional[float] = None  # fill_price - requested_price
+    fill_price: float | None = None
+    fill_timestamp: datetime | None = None
+    slippage: float | None = None  # fill_price - requested_price
 
     # Exit details (populated when position closes)
-    exit_price: Optional[float] = None
-    exit_timestamp: Optional[datetime] = None
-    exit_reason: Optional[str] = None  # "take_profit", "stop_loss", "manual"
+    exit_price: float | None = None
+    exit_timestamp: datetime | None = None
+    exit_reason: str | None = None  # "take_profit", "stop_loss", "manual"
 
     # Performance (calculated on close)
-    pnl: Optional[float] = None
-    pnl_pct: Optional[float] = None
-    r_multiple: Optional[float] = None  # pnl / capital_at_risk
+    pnl: float | None = None
+    pnl_pct: float | None = None
+    r_multiple: float | None = None  # pnl / capital_at_risk
 
     @classmethod
-    def from_risk_decision(cls, decision: RiskDecision, order_id: Optional[str] = None) -> "Order":
+    def from_risk_decision(cls, decision: RiskDecision, order_id: str | None = None) -> Order:
         """Build an Order from a RiskDecision.
 
         The order_id can be pre-supplied (for idempotency replay) or generated fresh.

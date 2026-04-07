@@ -17,8 +17,7 @@ Split:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -26,7 +25,6 @@ from src.execution.broker import Order, OrderSide, OrderStatus, RiskDecision
 from src.execution.order_manager import OrderManager
 from src.execution.paper_broker import PaperBroker
 from src.risk_management.portfolio import PortfolioRisk, Position
-
 
 # ============================================================
 # Fixtures

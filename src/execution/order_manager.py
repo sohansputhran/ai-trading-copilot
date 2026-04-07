@@ -20,10 +20,10 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Generator, List, Optional
 
 from src.execution.broker import BrokerInterface, Order, OrderSide, OrderStatus, RiskDecision
 
@@ -64,7 +64,7 @@ class OrderManager:
         # For :memory: databases, sqlite3 creates a brand-new empty DB on every
         # connect() call. We keep one persistent connection so the table created
         # in _init_db() is visible to all subsequent operations.
-        self._memory_conn: Optional[sqlite3.Connection] = None
+        self._memory_conn: sqlite3.Connection | None = None
         if self._db_path == ":memory:":
             self._memory_conn = sqlite3.connect(":memory:")
             self._memory_conn.row_factory = sqlite3.Row
@@ -74,7 +74,7 @@ class OrderManager:
     # Public API
     # ------------------------------------------------------------------
 
-    def submit(self, decision: RiskDecision, order_id: Optional[str] = None) -> Order:
+    def submit(self, decision: RiskDecision, order_id: str | None = None) -> Order:
         """Submit an order, enforcing idempotency.
 
         If order_id already exists in the DB, the existing order is returned
@@ -113,7 +113,7 @@ class OrderManager:
 
         return filled_order
 
-    def close_position(self, order_id: str, reason: str = "manual") -> Optional[Order]:
+    def close_position(self, order_id: str, reason: str = "manual") -> Order | None:
         """Close an open position by order_id.
 
         Returns None if order_id not found or position is not open.
@@ -132,11 +132,11 @@ class OrderManager:
         self._update_order(closed_order)
         return closed_order
 
-    def get_open_positions(self) -> List[Order]:
+    def get_open_positions(self) -> list[Order]:
         """Return all orders with status=FILLED."""
         return self._query_orders_by_status(OrderStatus.FILLED)
 
-    def get_all_orders(self) -> List[Order]:
+    def get_all_orders(self) -> list[Order]:
         """Return all orders regardless of status."""
         with self._db_conn() as conn:
             rows = conn.execute(
@@ -244,14 +244,14 @@ class OrderManager:
             )
             conn.commit()
 
-    def _load_order(self, order_id: str) -> Optional[Order]:
+    def _load_order(self, order_id: str) -> Order | None:
         with self._db_conn() as conn:
             row = conn.execute(
                 "SELECT * FROM trades WHERE order_id = ?", (order_id,)
             ).fetchone()
         return self._row_to_order(row) if row else None
 
-    def _query_orders_by_status(self, status: OrderStatus) -> List[Order]:
+    def _query_orders_by_status(self, status: OrderStatus) -> list[Order]:
         with self._db_conn() as conn:
             rows = conn.execute(
                 "SELECT * FROM trades WHERE status = ? ORDER BY created_at DESC",
@@ -292,7 +292,7 @@ class OrderManager:
 
     @staticmethod
     def _row_to_order(row: sqlite3.Row) -> Order:
-        def _dt(val: Optional[str]) -> Optional[datetime]:
+        def _dt(val: str | None) -> datetime | None:
             return datetime.fromisoformat(val) if val else None
 
         return Order(
