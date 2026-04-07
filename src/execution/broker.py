@@ -13,12 +13,12 @@ import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 # Enums
 
 
-class OrderStatus(str, Enum):
+class OrderStatus(StrEnum):
     """Complete lifecycle of an order.
 
     State transitions:
@@ -37,7 +37,7 @@ class OrderStatus(str, Enum):
     STOPPED_OUT = "STOPPED_OUT"
 
 
-class OrderSide(str, Enum):
+class OrderSide(StrEnum):
     BUY = "BUY"
     SELL = "SELL"
 
