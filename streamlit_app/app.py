@@ -646,6 +646,15 @@ if scan_button:
                                     },
                                 )
 
+                                # Analytics page link
+                                st.sidebar.divider()
+                                st.sidebar.markdown("### 📊 Analytics")
+                                st.sidebar.page_link(
+                                    "pages/4_analytics.py",
+                                    label="View Trade Analytics",
+                                    icon="📈",
+                                )
+
             else:
                 st.info("No stocks with clear signals found.")
 

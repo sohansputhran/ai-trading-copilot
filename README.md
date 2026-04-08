@@ -8,7 +8,7 @@
 [![HuggingFace](https://img.shields.io/badge/HuggingFace-Free-yellow.svg)](https://huggingface.co/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](https://opensource.org/licenses/MIT)
 
-**An intelligent trading system that uses free AI to scan stocks, identify trading opportunities, and simulate paper trades with full order lifecycle management**
+**An intelligent trading system that uses free AI to scan stocks, identify trading opportunities, simulate paper trades, and measure strategy performance with a full analytics dashboard**
 
 [Features](#-features) • [Demo](#-screenshots) • [Quick Start](#-quick-start) • [How It Works](#-how-it-works) • [Tech Stack](#-built-with)
 
@@ -26,6 +26,7 @@ Scans stocks using **100% free AI**, evaluates risk, and lets you **paper trade*
 - 📋 **Paper trading** - One-click simulated order execution with live Yahoo Finance prices, slippage modeling, and SQLite persistence
 - 📌 **Open positions tracking** - Live P&L, R-multiple, and manual close buttons
 - ⚡ **Auto-trade mode** - Automatically paper-trades BUY signals above a configurable confidence threshold
+- 📊 **Trade analytics** - Equity curve, win rate, Sharpe ratio, Sortino ratio, max drawdown, R-multiple, and per-strategy breakdowns derived from closed paper trades
 - 💯 **100% Free** - No API costs, uses open-source HuggingFace models
 
 **Example output:**
@@ -117,9 +118,18 @@ Paper Fill: 25 × RELIANCE.NS @ 2,849.93 (slippage +2.43)
 * ✅ **R-multiple reporting** — Each closed trade reports pnl, pnl_pct, and R-multiple (pnl / capital_at_risk)
 * ✅ **Order lifecycle state machine** — PENDING → FILLED → CLOSED / STOPPED_OUT with full timestamp trail
 
+**Sprint 5 - Complete ✅**
+
+* ✅ **`ClosedTrade` read model** - CQRS-lite separation: distinct read model for analytics vs Sprint 4's `Order` write model; derives `hold_days` and `r_multiple` at read time — no schema migration needed
+* ✅ **`TradeRepository` abstraction** - ABC pattern mirrors `BrokerInterface`; analytics code never imports `sqlite3` or `psycopg2` directly
+* ✅ **`SQLiteRepository`** - Reads existing `data/trades.db` Sprint 4 paper trades without any data migration
+* ✅ **`PostgreSQLRepository`** - Ready for production migration; reads `DATABASE_URL` env var
+* ✅ **`PerformanceEngine`** - Pure stateless functions: win rate, profit factor, expectancy, avg R-multiple, Sharpe ratio (annualised √252), Sortino ratio, max drawdown (equity curve), per-strategy breakdown
+* ✅ **Analytics dashboard** (`pages/4_analytics.py`) - Equity curve chart, performance metrics summary, per-strategy breakdown table, full trade history table with R-multiple and hold days
+* ✅ **Sidebar analytics link** - One-click navigation from scanner to analytics page
+
 ## 🔜 Upcoming Sprints
 
-* **Sprint 5:** Trade journal & analytics (equity curves, win rate, avg R, drawdown metrics)
 * **Sprint 6:** Production deployment (Docker, CI/CD, monitoring)
 
 ---
@@ -143,7 +153,7 @@ Paper Fill: 25 × RELIANCE.NS @ 2,849.93 (slippage +2.43)
 - **AI Model:** Meta Llama-3-8B-Instruct (free via HuggingFace)
 - **Data:** yfinance (market data), pandas, numpy
 - **UI:** Streamlit, Plotly (interactive charts)
-- **Persistence:** SQLite (`data/trades.db`), upgradeable to PostgreSQL in Sprint 5
+- **Persistence:** SQLite (`data/trades.db`), PostgreSQL-ready (`PostgreSQLRepository` via `DATABASE_URL`)
 - **Dev Tools:** pytest, python-dotenv, structlog
 
 ---
@@ -208,38 +218,39 @@ Open http://localhost:8501 in your browser! 🎉
 │  - Risk sidebar (deployment %, risk %, sector exposure)      │
 │  - Open positions table + manual close buttons               │
 │  - Auto-trade toggle + confidence threshold slider           │
+│  - Analytics page link (equity curve, metrics, history)      │
 └───────────────────────┬──────────────────────────────────────┘
                         │
-┌───────────────────────▼──────────────────────────────────────┐
-│              Multi-Agent Orchestration Layer                  │
+┌───────────────────────v──────────────────────────────────────┐
+│              Multi-Agent Orchestration Layer                 │
 │                (LangGraph StateGraph)                        │
 │                                                              │
-│  ┌──────────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │  Technical       │  │  Momentum    │  │  Breakout     │  │
-│  │  Analysis Agent  │  │  Strategy    │  │  Strategy     │  │
-│  │  RSI/MACD/BB     │  │  EMA + ADX   │  │  Vol + ATR    │  │
-│  └────────┬─────────┘  └──────┬───────┘  └──────┬────────┘  │
+│  ┌──────────────────┐  ┌──────────────┐  ┌───────────────┐   │
+│  │  Technical       │  │  Momentum    │  │  Breakout     │   │
+│  │  Analysis Agent  │  │  Strategy    │  │  Strategy     │   │
+│  │  RSI/MACD/BB     │  │  EMA + ADX   │  │  Vol + ATR    │   │
+│  └────────┬─────────┘  └──────┬───────┘  └──────┬────────┘   │
 │           └───────────────────┼──────────────────┘           │
 │                               │                              │
-│                    ┌──────────▼──────────┐                   │
+│                    ┌──────────v──────────┐                   │
 │                    │      Aggregator     │                   │
 │                    │  Weighted scoring + │                   │
 │                    │  agreement penalty  │                   │
 │                    └──────────┬──────────┘                   │
 └───────────────────────────────┼──────────────────────────────┘
                                 │
-┌───────────────────────────────▼──────────────────────────────┐
+┌───────────────────────────────v──────────────────────────────┐
 │                    Risk Management Layer                     │
 │  - PositionSizer (fixed fractional / Kelly / ATR-based)      │
 │  - PreTradeValidator (5% position cap, 2% loss circuit)      │
 │  - PortfolioRisk (open positions, sector exposure, P&L)      │
 └───────────────────────────────┬──────────────────────────────┘
                                 │
-┌───────────────────────────────▼──────────────────────────────┐
+┌───────────────────────────────v──────────────────────────────┐
 │                     Execution Layer                          │
 │  ┌────────────────────┐    ┌──────────────────────────────┐  │
 │  │    OrderManager    │    │        PaperBroker           │  │
-│  │  - Idempotency     │───▶│  - Live yfinance price fetch │  │
+│  │  - Idempotency     │───>│  - Live yfinance price fetch │  │
 │  │  - SQLite persist  │    │  - Slippage simulation (5bp) │  │
 │  │  - Route to broker │    │  - PortfolioRisk sync        │  │
 │  └────────────────────┘    └──────────────────────────────┘  │
@@ -247,9 +258,20 @@ Open http://localhost:8501 in your browser! 🎉
 └───────────────────────────────┬──────────────────────────────┘
                                 │
 ┌───────────────────────────────▼──────────────────────────────┐
+│                   Trade Analytics Layer                      │
+│  ┌────────────────────┐    ┌──────────────────────────────┐  │
+│  │  TradeRepository   │    │     PerformanceEngine        │  │
+│  │  SQLiteRepository  │───>│  - Win rate, profit factor   │  │
+│  │  PostgreSQLRepo    │    │  - Sharpe, Sortino, drawdown │  │
+│  │  (DB abstraction)  │    │  - R-multiple, expectancy    │  │
+│  └────────────────────┘    └──────────────────────────────┘  │
+│          Reads: data/trades.db → ClosedTrade read models     │
+└───────────────────────────────┬──────────────────────────────┘
+                                │
+┌───────────────────────────────v──────────────────────────────┐
 │                    Data Pipeline Layer                       │
 │  - Market data (Yahoo Finance / yfinance)                    │
-│  - Technical indicators: RSI, MACD, BB, EMA, ADX, ATR       │
+│  - Technical indicators: RSI, MACD, BB, EMA, ADX, ATR        │
 │  - Scanner Agent (HuggingFace Llama-3-8B)                    │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -303,7 +325,22 @@ closed = manager.close_position(order_id, reason="manual")
 # Calculates: gross_pnl, pnl_pct, r_multiple (pnl / capital_at_risk)
 ```
 
-**6. Dashboard Display**
+**6. Analytics Dashboard**
+```python
+repo = SQLiteRepository(db_path="data/trades.db")
+trades = repo.get_closed_trades()          # Returns list[ClosedTrade] read models
+equity  = repo.get_equity_curve()          # Daily cumulative P&L for chart
+
+metrics = PerformanceEngine.summary(trades)
+# Returns: win_rate, profit_factor, expectancy, avg_r_multiple,
+#          sharpe_ratio (annualised √252), sortino_ratio,
+#          max_drawdown (on equity curve), total_pnl, ...
+
+by_strat = PerformanceEngine.by_strategy(trades)
+# Per-strategy breakdown: { "momentum": { win_rate, profit_factor, ... }, ... }
+```
+
+**7. Dashboard Display**
 ```bash
 streamlit run streamlit_app/app.py
 # Shows:
@@ -312,6 +349,7 @@ streamlit run streamlit_app/app.py
 #   - Each stock: per-agent breakdown + confidence + risk assessment + Paper Trade button
 #   - Open positions table with live P&L and close buttons
 #   - Auto-trade toggle in sidebar
+#   - Sidebar link -> Analytics page (equity curve, metrics, trade history)
 ```
 
 ---
@@ -383,6 +421,44 @@ except:
 
 ---
 
+## 📈 Trade Analytics (Sprint 5)
+
+### CQRS-Lite: Read Model vs Write Model
+
+Sprint 4's `Order` is the **write model** - it tracks the full order lifecycle including pending and rejected states. Sprint 5's `ClosedTrade` is the **read model** - it only represents completed trades and adds derived fields computed at read time:
+
+| Field | Source |
+|-------|--------|
+| `hold_days` | `exit_timestamp.date() - entry_timestamp.date()` |
+| `r_multiple` | `pnl / (entry_price - stop_loss) / shares` |
+
+This separation means zero schema migration - `SQLiteRepository` reads the existing `data/trades.db` directly.
+
+### Performance Metrics
+
+| Metric | Formula | What It Tells You |
+|--------|---------|-------------------|
+| **Win Rate** | winners / total trades | % profitable - pair with Profit Factor |
+| **Profit Factor** | gross profit / gross loss | > 1.5 decent, > 2.0 good |
+| **Expectancy** | (win rate × avg win) - (loss rate × avg loss) | Expected ₹ per trade |
+| **Avg R-Multiple** | mean of all `r_multiple` values | P&L normalised for position size |
+| **Sharpe Ratio** | (mean daily return - risk-free) / std × √252 | Risk-adjusted return, > 1.0 acceptable |
+| **Sortino Ratio** | Sharpe but only penalises downside volatility | Better for asymmetric strategies |
+| **Max Drawdown** | Peak-to-trough decline on equity curve | Largest loss from peak capital |
+
+### Repository Pattern
+
+```python
+# Analytics code never touches sqlite3 or psycopg2 directly
+repo = SQLiteRepository(db_path="data/trades.db")   # Sprint 4 DB, no migration
+# repo = PostgreSQLRepository()                      # Swap for production
+
+trades = repo.get_closed_trades(strategy="momentum")  # Optional filters
+metrics = PerformanceEngine.summary(trades)            # Pure function, no DB
+```
+
+---
+
 ## 📋 Paper Trading System (Sprint 4)
 
 ### Order Lifecycle
@@ -422,12 +498,12 @@ R-multiple = gross_pnl / capital_at_risk
 ## 🧪 Testing
 
 ### Unit tests — no external dependencies needed
-Tests state schema, agent signal logic, aggregator math, risk engine logic, and the full execution layer (OrderManager + PaperBroker with a mock broker and in-memory SQLite).
+Tests state schema, agent signal logic, aggregator math, risk engine logic, the full execution layer (OrderManager + PaperBroker with a mock broker and in-memory SQLite), and the analytics engine (PerformanceEngine with synthetic trade fixtures).
 ```bash
-pytest tests/test_agents.py tests/test_risk.py tests/test_execution.py -v
+pytest tests/test_agents.py tests/test_risk.py tests/test_execution.py tests/test_journal.py -v
 ```
 
-### Integration tests — requires LangGraph
+### Integration tests - requires LangGraph
 Tests the full LangGraph pipeline end-to-end using mock agents. Auto-skipped if LangGraph is not installed.
 ```bash
 pytest tests/test_orchestrator.py -v
@@ -457,11 +533,15 @@ ai-trading-copilot/
 │   ├── data_pipeline/
 │   │   ├── collector.py            # Fetches stock data (Yahoo Finance)
 │   │   └── indicators.py           # Technical indicators (manual calculation)
-│   ├── execution/                  # ← NEW in Sprint 4
+│   ├── execution/                  # Sprint 4
 │   │   ├── broker.py               # BrokerInterface + Order + RiskDecision dataclasses
 │   │   ├── paper_broker.py         # PaperBroker: live yfinance price + slippage
 │   │   ├── order_manager.py        # Idempotency + SQLite persistence + routing
 │   │   └── schema.sql              # PostgreSQL-compatible trades table schema
+│   ├── journal/                    # Sprint 5
+│   │   ├── models.py               # ClosedTrade read model (CQRS-lite)
+│   │   ├── repository.py           # TradeRepository ABC + SQLiteRepository + PostgreSQLRepository
+│   │   └── analytics.py            # PerformanceEngine: pure metrics functions
 │   ├── risk_management/
 │   │   ├── position_sizer.py       # Kelly / fixed fractional / ATR sizing
 │   │   ├── validators.py           # Pre-trade hard limit gate
@@ -470,13 +550,16 @@ ai-trading-copilot/
 │       └── config.py               # Loads environment variables
 ├── streamlit_app/
 │   ├── app.py                      # Dashboard UI (scanning, multi-agent, risk, paper trading)
+│   ├── pages/
+│   │   └── 4_analytics.py          # Trade analytics dashboard (Sprint 5)
 │   └── components/
 │       └── risk_sidebar.py         # Portfolio risk sidebar component
 ├── tests/
 │   ├── test_agents.py              # Unit tests for agents & state (no external deps)
 │   ├── test_orchestrator.py        # Integration tests (requires LangGraph)
 │   ├── test_risk.py                # Risk engine unit tests (no external deps)
-│   └── test_execution.py           # Execution layer unit tests (mock broker, :memory: DB)
+│   ├── test_execution.py           # Execution layer unit tests (mock broker, :memory: DB)
+│   └── test_journal.py             # Analytics unit tests (synthetic fixtures, no DB)
 ├── data/
 │   └── trades.db                   # SQLite paper trade history (auto-created on first run)
 ├── configs/                        # Config files
@@ -494,25 +577,27 @@ ai-trading-copilot/
 This project showcases:
 
 ✅ **AI Engineering** - Multi-agent systems, prompt engineering, model selection & fallback strategies  
-✅ **Software Architecture** - Strategy pattern (BrokerInterface), clean layer separation, idempotency design  
+✅ **Software Architecture** - Strategy pattern (BrokerInterface, TradeRepository), clean layer separation, CQRS-lite read/write model separation  
 ✅ **Risk Management** - Kelly Criterion, position sizing algorithms, circuit breakers, portfolio-level constraints  
+✅ **Analytics Engineering** - Pure-function metrics engine, equity curve calculation, financial performance metrics (Sharpe, Sortino, drawdown)  
 ✅ **Production Code** - Error handling, fallbacks, logging, type hints, modular design  
 ✅ **Data Engineering** - Real-time pipelines, caching strategies, data validation  
 ✅ **Full-Stack Development** - Backend (Python), Frontend (Streamlit), API integration  
-✅ **Database Design** - SQLite persistence with PostgreSQL-compatible schema, state machine modeling  
-✅ **Domain Knowledge** - Financial indicators, technical analysis, risk-reward frameworks, order lifecycle  
+✅ **Database Design** - SQLite persistence with PostgreSQL-compatible schema, state machine modeling, repository abstraction  
+✅ **Domain Knowledge** - Financial indicators, technical analysis, risk-reward frameworks, order lifecycle, performance attribution  
 
 **Tech Stack:** Python, LangChain, LangGraph, HuggingFace, Streamlit, Pandas, NumPy, Plotly, SQLite, Git
 
 ### Learning Journey
 
-Built over **8 weeks** as part of a 12-week AI Engineering learning project:
+Built over **10 weeks** as part of a 12-week AI Engineering learning project:
 - **Sprint 1:** Real-time data pipelines, technical indicators, HuggingFace AI scanner
 - **Sprint 2:** Multi-agent orchestration, parallel LangGraph StateGraph, confidence scoring, explainable AI
 - **Sprint 3:** Risk algorithms (Kelly Criterion, fixed fractional, ATR-based sizing), pre-trade validation, portfolio-level circuit breakers
 - **Sprint 4:** Execution layer (BrokerInterface, PaperBroker, OrderManager), idempotency, SQLite persistence, auto-trade mode
+- **Sprint 5:** Trade analytics (CQRS-lite read/write model separation, repository pattern, pure-function PerformanceEngine, Sharpe/Sortino/drawdown metrics)
 - Implemented production-grade error handling and fallback chains throughout
-- 70+ passing tests (unit + integration) covering state, agents, orchestration, risk logic, and execution
+- 100+ passing tests (unit + integration) covering state, agents, orchestration, risk logic, execution, and analytics
 
 ---
 
@@ -548,6 +633,7 @@ Built over **8 weeks** as part of a 12-week AI Engineering learning project:
 | Module not found | Dependencies not installed | Run `pip install -r requirements.txt` |
 | Paper Trade button disabled | Risk check failed | Check risk verdict above the button for rejection reason |
 | `data/trades.db` missing | First run only | Auto-created when you click Paper Trade for the first time |
+| Analytics page shows "No closed trades" | Trades still open | Close positions first via the Open Positions table in the scanner |
 
 ---
 
@@ -571,7 +657,7 @@ Contributions welcome! This is a learning project, but improvements are apprecia
 - 🌍 Support more exchanges (US stocks via Yahoo)
 - 📊 Add sentiment analysis (news, social media)
 - 🤖 Improve AI prompts for better analysis
-- 🗄️ Upgrade persistence to PostgreSQL (Sprint 5 prep)
+- 🗄️ Upgrade persistence to PostgreSQL (swap `SQLiteRepository` for `PostgreSQLRepository`)
 
 ---
 
@@ -606,11 +692,12 @@ Contributions welcome! This is a learning project, but improvements are apprecia
 - [x] Auto-trade toggle + confidence threshold slider
 - [x] R-multiple reporting on closed trades
 
-### Sprint 5: Trade Journal (Coming Soon)
-- [ ] Equity curve visualization
-- [ ] Win rate, average R, Sharpe ratio, max drawdown metrics
-- [ ] Trade history page with filtering & export
-- [ ] PostgreSQL migration (swap SQLite connection string)
+### Sprint 5: Trade Analytics ✅ (Complete)
+- [x] `ClosedTrade` read model with derived `hold_days` and `r_multiple` (no schema migration)
+- [x] `TradeRepository` ABC + `SQLiteRepository` (reads Sprint 4 `data/trades.db`) + `PostgreSQLRepository`
+- [x] `PerformanceEngine` — pure functions: win rate, profit factor, expectancy, avg R-multiple, Sharpe ratio (annualised √252), Sortino ratio, max drawdown (equity curve), per-strategy breakdown
+- [x] Analytics dashboard (`pages/4_analytics.py`) — equity curve, metrics summary, per-strategy table, trade history
+- [x] Sidebar analytics link in `app.py`
 
 ### Sprint 6: Production (Coming Soon)
 - [ ] Docker containerization
@@ -659,7 +746,7 @@ Contributions welcome! This is a learning project, but improvements are apprecia
 
 ## 📄 License
 
-MIT License — Feel free to use for learning and personal projects!
+MIT License - Feel free to use for learning and personal projects!
 
 See [LICENSE](LICENSE) file for details.
 
