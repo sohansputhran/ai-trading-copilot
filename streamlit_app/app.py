@@ -256,6 +256,8 @@ def render_paper_trade_button(symbol: str, result: dict, position_size, validati
         return
 
     # Manual button path
+    if not validation.approved:
+        st.warning("⚠️ Risk check failed — trading anyway at your own discretion.")
     btn_col, status_col = st.columns([1, 3])
     with btn_col:
         clicked = st.button(
@@ -263,11 +265,12 @@ def render_paper_trade_button(symbol: str, result: dict, position_size, validati
             key=f"paper_trade_{symbol}",
             type="primary",
             disabled=not validation.approved,
-            help=(
-                "Execute a paper trade at the current live price"
-                if validation.approved
-                else "Risk check failed — cannot paper trade"
-            ),
+            # help=(
+            #     "Execute a paper trade at the current live price"
+            #     if validation.approved
+            #     else "Risk check failed — cannot paper trade"
+            # ),
+            help="Execute a paper trade at the current live price",
         )
     if clicked:
         with st.spinner(f"Fetching live price for {symbol}..."):
@@ -308,6 +311,25 @@ if PAPER_TRADING_AVAILABLE:
         st.session_state.auto_trade_enabled = False
     if "auto_trade_threshold" not in st.session_state:
         st.session_state.auto_trade_threshold = 0.75
+
+    # Hydrate PortfolioRisk from open orders persisted in SQLite.
+    # Runs once per session. Without this, restarting the app wipes the
+    # in-memory PortfolioRisk even though trades.db still has open positions.
+    if "portfolio_hydrated" not in st.session_state:
+        for _order in st.session_state.order_manager.get_open_positions():
+            _entry = _order.fill_price or _order.requested_price or 0.0
+            st.session_state.portfolio_risk.add_position(
+                Position(
+                    symbol=_order.symbol,
+                    shares=_order.shares,
+                    entry_price=_entry,
+                    stop_loss=_order.stop_loss,
+                    position_value=_order.shares * _entry,
+                    capital_at_risk=_order.capital_at_risk,
+                    sector=None,
+                )
+            )
+        st.session_state["portfolio_hydrated"] = True
 
 # Page config & title
 
@@ -564,7 +586,7 @@ if scan_button:
                         final_confidence = multi_agent_data.get("final_confidence", 0.0) if multi_agent_data else 0.0
                         signal_value = final_signal.value if hasattr(final_signal, "value") else str(final_signal)
 
-                        if signal_value == "BUY":
+                        if True:  # Show risk assessment & paper trade for all stocks
                             st.markdown("---")
                             st.markdown("### 🛡️ Risk Assessment")
 
@@ -694,6 +716,71 @@ if scan_button:
                         st.markdown("---")
                         st.markdown("### 🤖 Multi-Agent Analysis")
                         render_multi_agent_tab(result.get("multi_agent"))
+
+                        # Risk assessment & Paper Trade for not-interesting stocks too
+                        multi_agent_data = result.get("multi_agent")
+                        final_confidence = multi_agent_data.get("final_confidence", 0.0) if multi_agent_data else 0.0
+
+                        st.markdown("---")
+                        st.markdown("### 🛡️ Risk Assessment")
+
+                        _snap = st.session_state.portfolio_risk.snapshot()
+                        _indicators = result.get("indicators", {})
+                        _entry = result.get("price", 0.0)
+                        _atr = _indicators.get("atr", None)
+                        _stop = (
+                            _entry - (_atr * 1.5)
+                            if (_atr and _atr > 0 and _entry > 0)
+                            else _entry * 0.98
+                        )
+
+                        _size = st.session_state.position_sizer.calculate(
+                            entry_price=_entry,
+                            stop_loss=_stop,
+                            atr=_atr,
+                            confidence=final_confidence,
+                            reward_risk_ratio=2.0,
+                        )
+
+                        _validation = st.session_state.validator.validate(
+                            symbol=result["symbol"],
+                            position_value=_size.position_value,
+                            portfolio_value=_snap.portfolio_value,
+                            open_positions=_snap.open_positions,
+                            confidence=final_confidence,
+                            daily_pnl=_snap.daily_pnl,
+                            sector=None,
+                            sector_exposure=0.0,
+                            capital_at_risk=_size.capital_at_risk,
+                        )
+
+                        r_col1, r_col2, r_col3 = st.columns(3)
+                        with r_col1:
+                            st.metric("Suggested Shares", _size.shares)
+                        with r_col2:
+                            st.metric("Capital at Risk", f"{_size.capital_at_risk:,.0f}")
+                        with r_col3:
+                            st.metric("Position Size", f"{_size.position_value:,.0f}")
+
+                        if _validation.approved:
+                            st.success(
+                                f"✅ Risk Check Passed "
+                                f"({_validation.checks_passed}/{_validation.checks_total})"
+                            )
+                        else:
+                            st.error("❌ Risk Check Failed")
+                            for _reason in _validation.rejection_reasons:
+                                st.caption(f"• {_reason}")
+
+                        # # Paper Trade button
+                        # st.markdown("---")
+                        # st.markdown("### 📋 Paper Trade")
+                        # render_paper_trade_button(
+                        #     symbol=result["symbol"],
+                        #     result=result,
+                        #     position_size=_size,
+                        #     validation=_validation,
+                        # )
 
             else:
                 st.success("All stocks showed interesting signals!")
