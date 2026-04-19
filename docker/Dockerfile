@@ -53,7 +53,8 @@ COPY --from=builder /root/.local /home/appuser/.local
 # Order matters for caching: code changes more often than dependencies
 COPY src/ ./src/
 COPY streamlit_app/ ./streamlit_app/
-COPY configs/ ./configs/
+# configs/ intentionally omitted - directory is currently empty and not tracked by Git.
+# Restore this line once config files are added: COPY configs/ ./configs/
 
 # Create data directory for SQLite (if DATABASE_URL not set)
 # chown: Give ownership to appuser so it can write trades.db
