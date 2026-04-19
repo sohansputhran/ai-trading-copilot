@@ -28,8 +28,8 @@ logger = structlog.get_logger()
 # ── Configurable weights (sum must equal 1.0) ─────────────────────────────────
 AGENT_WEIGHTS = {
     AgentName("technical_analysis"): 0.25,  # Changed from 0.35
-    AgentName("momentum_strategy"): 0.40,   # Changed from 0.35
-    AgentName("breakout_strategy"): 0.35,   # Changed from 0.30
+    AgentName("momentum_strategy"): 0.40,  # Changed from 0.35
+    AgentName("breakout_strategy"): 0.35,  # Changed from 0.30
 }
 
 # ── Thresholds ─────────────────────────────────────────────────────────────────
@@ -102,7 +102,7 @@ def aggregate(state: TradingState) -> TradingState:
         # Let majority voting win — don't override based on agreement
         final_signal = dominant_signal
         threshold_note = ""
-        
+
         # Log if agreement is low (informational, not a blocker)
         if agent_agreement < 0.70:
             threshold_note = (

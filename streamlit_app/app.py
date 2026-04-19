@@ -257,32 +257,55 @@ def render_paper_trade_button(symbol: str, result: dict, position_size, validati
 
     # Manual button path
     if not validation.approved:
-        st.warning("⚠️ Risk check failed — trading anyway at your own discretion.")
+        st.warning("⚠️ Risk check failed — proceeding at your own discretion.")
+    
+    # DEBUG: Show state before button
+    st.write(f"🔍 DEBUG: About to render button for {symbol}")
+    st.write(f"   validation.approved = {validation.approved}")
+    st.write(f"   order_manager = {order_manager is not None}")
+    
     btn_col, status_col = st.columns([1, 3])
+    
     with btn_col:
+        button_key = f"paper_trade_{symbol}_{i}"
+        
         clicked = st.button(
             "📋 Paper Trade",
-            key=f"paper_trade_{symbol}",
+            key=button_key,
             type="primary",
-            disabled=not validation.approved,
-            # help=(
-            #     "Execute a paper trade at the current live price"
-            #     if validation.approved
-            #     else "Risk check failed — cannot paper trade"
-            # ),
-            help="Execute a paper trade at the current live price",
+            help="Execute a paper trade",
         )
+        
+        # DEBUG: Show if button was clicked
+        st.write(f"🔍 clicked = {clicked}")
+    
+    # Handle button click
     if clicked:
-        with st.spinner(f"Fetching live price for {symbol}..."):
-            order = order_manager.submit(decision)
+        st.write(f"✅ Button clicked! Executing trade...")
+        
         with status_col:
-            if order.fill_price:
-                st.success(
-                    f"✅ Filled {order.shares} × {symbol} @ ₹{order.fill_price:,.2f} "
-                    f"(slippage ₹{order.slippage:+.2f})"
-                )
-            else:
-                st.error(f"❌ Order rejected — could not fetch live price for {symbol}.")
+            with st.spinner(f"Executing paper trade for {symbol}..."):
+                try:
+                    st.write(f"🔍 Calling order_manager.submit()...")
+                    order = order_manager.submit(decision)
+                    
+                    st.write(f"🔍 Order returned: {order}")
+                    st.write(f"   fill_price = {order.fill_price}")
+                    
+                    if order.fill_price:
+                        st.success(
+                            f"✅ Filled {order.shares} × {symbol} @ ₹{order.fill_price:,.2f}"
+                        )
+                        st.rerun()
+                    else:
+                        st.error(f"❌ No fill price")
+                        
+                except Exception as e:
+                    st.error(f"❌ Exception: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
+    else:
+        st.write(f"ℹ️ Button not clicked this run")
 
 
 # Session state - initialised once per session

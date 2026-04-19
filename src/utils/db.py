@@ -74,8 +74,7 @@ def get_connection(
         return _connect_postgresql(url)
     else:
         raise ValueError(
-            f"Unsupported database URL scheme: {url}. "
-            "Expected 'sqlite:///' or 'postgresql://'"
+            f"Unsupported database URL scheme: {url}. " "Expected 'sqlite:///' or 'postgresql://'"
         )
 
 

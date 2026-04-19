@@ -145,7 +145,9 @@ class PositionSizer:
         """
         # Sanitize inputs — NaN/zero prices cause division errors downstream
         if not math.isfinite(entry_price) or entry_price <= 0:
-            logger.warning("invalid_entry_price", entry_price=entry_price, action="returning_zero_size")
+            logger.warning(
+                "invalid_entry_price", entry_price=entry_price, action="returning_zero_size"
+            )
             return self._zero_size("Invalid or zero entry price")
         if not math.isfinite(stop_loss):
             stop_loss = entry_price * 0.98  # fallback 2% stop
