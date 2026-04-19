@@ -377,6 +377,63 @@ render_risk_sidebar(
     sizing_method=os.getenv("SIZING_METHOD", "fixed_fractional"),
 )
 
+st.sidebar.divider()
+ 
+if PAPER_TRADING_AVAILABLE and st.session_state.get("order_manager"):
+    order_manager = st.session_state.order_manager
+    open_positions = order_manager.get_open_positions()
+    
+    st.sidebar.markdown("### 💼 Portfolio")
+    
+    if open_positions:
+        # Calculate quick summary
+        total_pnl = 0.0
+        winning = 0
+        
+        for order in open_positions:
+            symbol = order.symbol
+            entry_price = order.fill_price or order.requested_price or 0.0
+            quantity = order.shares
+            
+            # Get current price (use simple approach)
+            try:
+                import yfinance as yf
+                ticker = yf.Ticker(symbol + ".NS" if not symbol.endswith(".NS") else symbol)
+                data = ticker.history(period="1d")
+                current_price = float(data['Close'].iloc[-1]) if not data.empty else entry_price
+            except:
+                current_price = entry_price
+            
+            # Calculate P&L
+            pnl = (current_price - entry_price) * quantity
+            total_pnl += pnl
+            if pnl >= 0:
+                winning += 1
+        
+        # Display summary
+        summary_col1, summary_col2 = st.sidebar.columns(2)
+        
+        with summary_col1:
+            st.metric("Positions", f"{len(open_positions)}")
+        
+        with summary_col2:
+            pnl_color = "🟢" if total_pnl >= 0 else "🔴"
+            st.metric("Total P&L", f"{pnl_color} ₹{total_pnl:+,.0f}")
+        
+        st.sidebar.caption(f"{winning}W / {len(open_positions)-winning}L")
+        
+        # Link to portfolio page
+        st.sidebar.page_link(
+            "pages/3_portfolio.py",
+            label="📊 View Full Portfolio",
+            icon="💼",
+        )
+    else:
+        st.sidebar.caption("_No open positions_")
+        st.sidebar.caption("Run scanner to find trades")
+else:
+    st.sidebar.caption("Paper trading not available")
+
 # Stock selection
 scan_option = st.sidebar.radio(
     "What to scan:",
@@ -812,16 +869,6 @@ if scan_button:
                             st.error("❌ Risk Check Failed")
                             for _reason in _validation.rejection_reasons:
                                 st.caption(f"• {_reason}")
-
-                        # # Paper Trade button
-                        # st.markdown("---")
-                        # st.markdown("### 📋 Paper Trade")
-                        # render_paper_trade_button(
-                        #     symbol=result["symbol"],
-                        #     result=result,
-                        #     position_size=_size,
-                        #     validation=_validation,
-                        # )
 
             else:
                 st.success("All stocks showed interesting signals!")
