@@ -20,7 +20,8 @@ import os
 from dotenv import load_dotenv
 
 # Load .env file (looks for .env in project root)
-load_dotenv()
+# override=True ensures .env values always win over stale system env vars
+load_dotenv(override=True)
 
 # Get API token from environment
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
