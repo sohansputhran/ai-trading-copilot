@@ -1,0 +1,82 @@
+# AI Trading Copilot - Docker Ignore File
+# Excludes files from Docker build context for faster builds and smaller images
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Documentation (not needed in runtime image)
+docs/
+*.md
+!README.md  # Keep README for container reference
+
+# Project management files
+PROJECT_MASTER.md
+TECHNICAL_SPECS.md
+QUICK_REFERENCE.md
+SPRINT_*.md
+
+# Data files (handled by volumes)
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+.dockerignore
+.env
+.env.*
+
+# Jupyter notebooks
+notebooks/
+*.ipynb
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

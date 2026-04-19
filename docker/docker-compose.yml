@@ -1,0 +1,148 @@
+# AI Trading Copilot - Docker Compose Configuration
+# Orchestrates the full stack: Streamlit app + PostgreSQL database
+
+services:
+  # ========================================================================
+  # PostgreSQL Database Service
+  # Purpose: Production-grade database for trade journal and analytics
+  # ========================================================================
+  postgres:
+    image: postgres:16-alpine  # Official PostgreSQL 16, Alpine-based (smaller)
+    container_name: trading_postgres
+    
+    # Environment variables for PostgreSQL initialization
+    # CRITICAL: These are defaults for DEVELOPMENT ONLY
+    # For production, override via .env file or Docker secrets
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-trading_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trading_password}
+      POSTGRES_DB: ${POSTGRES_DB:-trading_db}
+      # Performance tuning for development (adjust for production load)
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-128MB}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
+    
+    # Persistent volume: Data survives container restarts
+    # Without this, all trades disappear when you stop the container!
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Mount schema.sql for automatic table creation on first start
+      - ../src/execution/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    
+    # Port mapping: Access PostgreSQL from host (optional, for debugging)
+    # Format: HOST_PORT:CONTAINER_PORT
+    # Can connect with: psql -h localhost -p 5432 -U trading_user -d trading_db
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    
+    # Health check: Ensure PostgreSQL is ready before starting app
+    # pg_isready: PostgreSQL's built-in health check command
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-trading_user} -d ${POSTGRES_DB:-trading_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    
+    # Restart policy: Always restart unless explicitly stopped
+    # Handles crashes, system reboots, etc.
+    restart: unless-stopped
+    
+    # Resource limits (optional, uncomment for production)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1.0'
+    #       memory: 512M
+    #     reservations:
+    #       memory: 256M
+  
+  # ========================================================================
+  # Streamlit Application Service
+  # Purpose: Web UI for trading system (scanner, agents, analytics)
+  # ========================================================================
+  app:
+    # Build from local Dockerfile (not a pre-built image)
+    build:
+      context: ..  # Build context is project root
+      dockerfile: docker/Dockerfile
+    container_name: trading_app
+    
+    # Environment variables for the application
+    # DATABASE_URL is the key: it switches the app from SQLite to PostgreSQL
+    environment:
+      # PostgreSQL connection string
+      # Format: postgresql://user:password@hostname:port/database
+      # Hostname is 'postgres' (the service name - Docker's internal DNS)
+      DATABASE_URL: postgresql://${POSTGRES_USER:-trading_user}:${POSTGRES_PASSWORD:-trading_password}@postgres:5432/${POSTGRES_DB:-trading_db}
+      
+      # HuggingFace API token (required for LLM agents)
+      # MUST be provided via .env file - no default for security
+      HUGGINGFACE_API_TOKEN: ${HUGGINGFACE_API_TOKEN}
+      
+      # Application environment
+      ENV: ${ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      
+      # Trading parameters (can override via .env)
+      PAPER_TRADING: ${PAPER_TRADING:-true}
+      MAX_POSITION_SIZE: ${MAX_POSITION_SIZE:-0.05}
+      MAX_DAILY_LOSS: ${MAX_DAILY_LOSS:-0.02}
+    
+    # Mount local code for development hot-reload (comment out for production)
+    # volumes:
+    #   - ../src:/app/src
+    #   - ../streamlit_app:/app/streamlit_app
+    
+    # Port mapping: Access Streamlit from host
+    # Visit http://localhost:8501 after starting
+    ports:
+      - "${APP_PORT:-8501}:8501"
+    
+    # Dependency: Wait for PostgreSQL to be healthy before starting app
+    # Without this, app might try to connect before DB is ready
+    depends_on:
+      postgres:
+        condition: service_healthy  # Wait for healthcheck to pass
+    
+    # Health check: Ensure Streamlit is responding
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8501/_stcore/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s  # Longer start period (Streamlit takes time to boot)
+    
+    restart: unless-stopped
+    
+    # Resource limits (optional)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2.0'
+    #       memory: 2G
+    #     reservations:
+    #       memory: 512M
+
+# ========================================================================
+# Volumes
+# Purpose: Named volumes for persistent data storage
+# ========================================================================
+volumes:
+  # PostgreSQL data volume
+  # Persists across container restarts, survives 'docker-compose down'
+  # Only removed with 'docker-compose down -v' (explicit volume removal)
+  postgres_data:
+    driver: local
+    # Optional: specify mount point on host for backups
+    # driver_opts:
+    #   type: none
+    #   o: bind
+    #   device: ./docker/volumes/postgres_data
+
+# ========================================================================
+# Networks (optional, Docker Compose creates default network automatically)
+# Uncomment if you need custom network configuration
+# ========================================================================
+# networks:
+#   trading_network:
+#     driver: bridge

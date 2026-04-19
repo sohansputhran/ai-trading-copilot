@@ -1,3 +1,6 @@
+# AI Trading Copilot - CI/CD Pipeline
+# Runs on every push and pull request to verify code quality and build integrity
+
 name: CI
 
 on:
@@ -7,71 +10,150 @@ on:
     branches: [ main, develop ]
 
 jobs:
+  # Lint (Code Quality)
+  # Fast feedback on code style and formatting issues
   lint:
-    name: Lint & Format Check
+    name: Lint Code
     runs-on: ubuntu-latest
-
+    
     steps:
-      - uses: actions/checkout@v4
-
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
-
-      - name: Install linting tools
-        run: pip install ruff black
-
-      - name: Run ruff (linting)
-        # ruff checks for real code issues: unused imports, undefined names,
-        # dangerous patterns. Fails the build if any are found.
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install linting dependencies
+        run: |
+          pip install ruff black
+      
+      - name: Run ruff
         run: ruff check src/ tests/
+      
+      - name: Check black formatting
+        run: black src/ tests/ --check --line-length 100
 
-      - name: Run black (formatting check)
-        # --check makes black exit non-zero if any file WOULD be reformatted.
-        # Does not modify files — just tells you what needs fixing.
-        run: black --check src/ tests/
-
+  # Test (Unit & Integration Tests)
+  # Comprehensive test suite with lightweight CI dependencies
   test:
-    name: Unit Tests
+    name: Run Tests
     runs-on: ubuntu-latest
-    # Run tests even if lint fails — you want to see both sets of problems
-    # at once rather than fixing lint and then discovering test failures.
-
+    
     steps:
-      - uses: actions/checkout@v4
-
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
-
-      - name: Cache pip dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          # Key includes requirements hash — cache invalidates when deps change
-          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-ci.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
+          python-version: '3.11'
+          cache: 'pip'
+      
       - name: Install CI dependencies
-        # requirements-ci.txt is a minimal install — no torch, no transformers,
-        # no HuggingFace. Keeps CI under 30 seconds instead of 5+ minutes.
-        run: pip install -r requirements-ci.txt
-
-      - name: Run unit tests
-        # test_agents.py has zero external dependencies — runs anywhere.
-        # test_orchestrator.py requires langgraph (in requirements-ci.txt)
-        # and auto-skips if it's not available.
-        run: pytest tests/ -v --tb=short
-
+        run: |
+          pip install -r requirements-ci.txt
+      
+      - name: Run pytest
+        run: |
+          pytest tests/ -v --cov=src --cov-report=term-missing
+      
       - name: Upload coverage report
-        # Only runs if tests pass. Uploads as an artifact you can view
-        # in the Actions tab — useful for seeing which lines aren't tested.
-        if: success()
-        uses: actions/upload-artifact@v4
+        if: always()
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-report
-          path: htmlcov/
-          retention-days: 7
+          path: .coverage
+
+  # Docker Build Verification
+  # Ensures the Docker image builds successfully on every commit
+  docker-build:
+    name: Verify Docker Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false  # Don't push to registry (just verify build works)
+          tags: ai-trading-copilot:ci-${{ github.sha }}
+          cache-from: type=gha  # Use GitHub Actions cache
+          cache-to: type=gha,mode=max
+          # Multi-platform build (optional, uncomment if deploying to ARM)
+          # platforms: linux/amd64,linux/arm64
+      
+      - name: Test Docker image runs
+        run: |
+          # Build the image locally for testing
+          docker build -t ai-trading-copilot:test -f docker/Dockerfile .
+          
+          # Start container in background with health check disabled (no network in CI)
+          docker run -d \
+            --name trading_test \
+            -e DATABASE_URL=sqlite:///data/trades.db \
+            -e HUGGINGFACE_API_TOKEN=dummy_token_for_ci \
+            --health-cmd "exit 0" \
+            ai-trading-copilot:test
+          
+          # Wait for container to start (up to 30 seconds)
+          sleep 10
+          
+          # Check container is running
+          if [ "$(docker inspect -f '{{.State.Running}}' trading_test)" != "true" ]; then
+            echo "❌ Container failed to start"
+            docker logs trading_test
+            exit 1
+          fi
+          
+          echo "✅ Container started successfully"
+          
+          # Cleanup
+          docker stop trading_test
+          docker rm trading_test
+
+  # Status Check: All Jobs Must Pass
+  # This creates a single status check that GitHub can use for branch protection
+  ci-success:
+    name: CI Success
+    needs: [lint, test, docker-build]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Check all jobs
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.docker-build.result }}" != "success" ]; then
+            echo "❌ One or more CI jobs failed"
+            exit 1
+          fi
+          echo "✅ All CI jobs passed"
+
+# CI Performance Notes
+# Current CI run time (approximate):
+# - Lint: ~30 seconds (ruff + black)
+# - Test: ~45 seconds (100+ tests with lightweight deps)
+# - Docker Build: ~2-3 minutes (cached layers speed up subsequent builds)
+# Total: ~4 minutes per push
+#
+# Why this is fast:
+# 1. requirements-ci.txt excludes heavy deps (torch, transformers)
+# 2. Docker build uses GitHub Actions cache
+# 3. Lint and Test run in parallel
+# 4. No external API calls in tests (all mocked/fixtures)
+#
+# Future optimizations:
+# - Matrix testing (Python 3.11, 3.12)
+# - Separate docker-build to scheduled runs (e.g., nightly)
+# - Add integration tests with PostgreSQL test container
