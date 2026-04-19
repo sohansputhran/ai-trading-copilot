@@ -20,6 +20,7 @@ code changes — a 12-factor app principle.
 
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass
 from enum import StrEnum
@@ -142,6 +143,15 @@ class PositionSizer:
         We enforce this defensively — if stop >= entry, we use a minimum
         risk of 0.5% of entry price to avoid division by zero.
         """
+        # Sanitize inputs — NaN/zero prices cause division errors downstream
+        if not math.isfinite(entry_price) or entry_price <= 0:
+            logger.warning(
+                "invalid_entry_price", entry_price=entry_price, action="returning_zero_size"
+            )
+            return self._zero_size("Invalid or zero entry price")
+        if not math.isfinite(stop_loss):
+            stop_loss = entry_price * 0.98  # fallback 2% stop
+
         # Defensive: ensure stop is below entry (long-only for now)
         risk_per_share = entry_price - stop_loss
         if risk_per_share <= 0:
@@ -367,9 +377,25 @@ class PositionSizer:
         if capped_shares < raw_shares:
             logger.info(
                 "position_capped_at_max",
-                raw_shares=int(raw_shares),
-                capped_shares=int(capped_shares),
+                raw_shares=int(raw_shares) if math.isfinite(raw_shares) else "NaN",
+                capped_shares=int(capped_shares) if math.isfinite(capped_shares) else "NaN",
                 max_pct=self.ABSOLUTE_MAX_POSITION_PCT * 100,
             )
 
+        # Guard: NaN/inf cannot be converted to int — return 0 shares safely
+        if not math.isfinite(capped_shares):
+            logger.warning("nan_shares_detected", raw_shares=raw_shares, action="returning_zero")
+            return 0
+
         return max(0, int(capped_shares))  # floor + guard against negatives
+
+    def _zero_size(self, reason: str) -> PositionSize:
+        """Return a safe zero-share PositionSize when inputs are unusable."""
+        return PositionSize(
+            shares=0,
+            capital_at_risk=0.0,
+            position_value=0.0,
+            fraction_used=0.0,
+            method=self.method,
+            reasoning=f"Cannot size position: {reason}",
+        )

@@ -256,30 +256,56 @@ def render_paper_trade_button(symbol: str, result: dict, position_size, validati
         return
 
     # Manual button path
+    if not validation.approved:
+        st.warning("⚠️ Risk check failed — proceeding at your own discretion.")
+    
+    # DEBUG: Show state before button
+    st.write(f"🔍 DEBUG: About to render button for {symbol}")
+    st.write(f"   validation.approved = {validation.approved}")
+    st.write(f"   order_manager = {order_manager is not None}")
+    
     btn_col, status_col = st.columns([1, 3])
+    
     with btn_col:
+        button_key = f"paper_trade_{symbol}_{i}"
+        
         clicked = st.button(
             "📋 Paper Trade",
-            key=f"paper_trade_{symbol}",
+            key=button_key,
             type="primary",
-            disabled=not validation.approved,
-            help=(
-                "Execute a paper trade at the current live price"
-                if validation.approved
-                else "Risk check failed — cannot paper trade"
-            ),
+            help="Execute a paper trade",
         )
+        
+        # DEBUG: Show if button was clicked
+        st.write(f"🔍 clicked = {clicked}")
+    
+    # Handle button click
     if clicked:
-        with st.spinner(f"Fetching live price for {symbol}..."):
-            order = order_manager.submit(decision)
+        st.write(f"✅ Button clicked! Executing trade...")
+        
         with status_col:
-            if order.fill_price:
-                st.success(
-                    f"✅ Filled {order.shares} × {symbol} @ ₹{order.fill_price:,.2f} "
-                    f"(slippage ₹{order.slippage:+.2f})"
-                )
-            else:
-                st.error(f"❌ Order rejected — could not fetch live price for {symbol}.")
+            with st.spinner(f"Executing paper trade for {symbol}..."):
+                try:
+                    st.write(f"🔍 Calling order_manager.submit()...")
+                    order = order_manager.submit(decision)
+                    
+                    st.write(f"🔍 Order returned: {order}")
+                    st.write(f"   fill_price = {order.fill_price}")
+                    
+                    if order.fill_price:
+                        st.success(
+                            f"✅ Filled {order.shares} × {symbol} @ ₹{order.fill_price:,.2f}"
+                        )
+                        st.rerun()
+                    else:
+                        st.error(f"❌ No fill price")
+                        
+                except Exception as e:
+                    st.error(f"❌ Exception: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
+    else:
+        st.write(f"ℹ️ Button not clicked this run")
 
 
 # Session state - initialised once per session
@@ -308,6 +334,25 @@ if PAPER_TRADING_AVAILABLE:
         st.session_state.auto_trade_enabled = False
     if "auto_trade_threshold" not in st.session_state:
         st.session_state.auto_trade_threshold = 0.75
+
+    # Hydrate PortfolioRisk from open orders persisted in SQLite.
+    # Runs once per session. Without this, restarting the app wipes the
+    # in-memory PortfolioRisk even though trades.db still has open positions.
+    if "portfolio_hydrated" not in st.session_state:
+        for _order in st.session_state.order_manager.get_open_positions():
+            _entry = _order.fill_price or _order.requested_price or 0.0
+            st.session_state.portfolio_risk.add_position(
+                Position(
+                    symbol=_order.symbol,
+                    shares=_order.shares,
+                    entry_price=_entry,
+                    stop_loss=_order.stop_loss,
+                    position_value=_order.shares * _entry,
+                    capital_at_risk=_order.capital_at_risk,
+                    sector=None,
+                )
+            )
+        st.session_state["portfolio_hydrated"] = True
 
 # Page config & title
 
@@ -418,38 +463,56 @@ if scan_button:
 
         # Run scan with progress updates
         results = []
+        
+        # Create collector once before the loop for fetching market data
+        collector = MarketDataCollector()
+        
         for i, symbol in enumerate(symbols):
             status_text.text(f"Scanning {symbol}... ({i+1}/{len(symbols)})")
             result = scanner.scan_stock(symbol)
+            
             if result:
                 # Run multi-agent analysis and attach to result
                 if orchestrator is not None:
                     try:
-                        multi = orchestrator.analyze(
-                            symbol,
-                            result.get("indicators", {}),  # market_data
-                            result.get("indicators", {}),  # indicators (same dict)
-                        )
-                        result["multi_agent"] = multi
-
-                        # Override single scanner classification with multi-agent decision.
-                        # A stock is "interesting" if the aggregator produced a
-                        # non-HOLD signal - confidence threshold already enforced
-                        # inside aggregator.py, so we trust the output directly.
-                        final_signal = multi.get("final_signal")
-                        if final_signal is not None:
-                            result["interesting"] = (
-                                final_signal.value in ("BUY", "SELL")
+                        # Fetch market data DataFrame for orchestrator
+                        # Try different method names (collector API may vary)
+                        market_data = None
+                        for method_name in ['get_data', 'fetch_data', 'fetch']:
+                            if hasattr(collector, method_name):
+                                try:
+                                    method = getattr(collector, method_name)
+                                    market_data = method(symbol)
+                                    break
+                                except:
+                                    pass
+                        
+                        if market_data is not None and not market_data.empty:
+                            # Call orchestrator with market_data DataFrame
+                            multi = orchestrator.analyze(
+                                symbol,
+                                market_data,                    # DataFrame with OHLCV data
+                                result.get("indicators", {}),   # Indicators dict
                             )
-                    except Exception:
+                            result["multi_agent"] = multi
+ 
+                            # Override scanner classification with multi-agent decision
+                            # A stock is "interesting" if final signal is BUY or SELL
+                            final_signal = multi.get("final_signal")
+                            if final_signal is not None:
+                                signal_value = final_signal.value if hasattr(final_signal, "value") else str(final_signal)
+                                result["interesting"] = (signal_value in ("BUY", "SELL"))
+                        else:
+                            result["multi_agent"] = None
+                            
+                    except Exception as e:
+                        # Log error but don't crash - keep single scanner classification
                         result["multi_agent"] = None
-                        # Keep single scanner classification on failure
                 else:
                     result["multi_agent"] = None
-                    # No orchestrator - single scanner classification stands
+                
                 results.append(result)
             progress_bar.progress((i + 1) / len(symbols))
-
         progress_bar.empty()
         status_text.empty()
 
@@ -564,7 +627,7 @@ if scan_button:
                         final_confidence = multi_agent_data.get("final_confidence", 0.0) if multi_agent_data else 0.0
                         signal_value = final_signal.value if hasattr(final_signal, "value") else str(final_signal)
 
-                        if signal_value == "BUY":
+                        if True:  # Show risk assessment & paper trade for all stocks
                             st.markdown("---")
                             st.markdown("### 🛡️ Risk Assessment")
 
@@ -694,6 +757,71 @@ if scan_button:
                         st.markdown("---")
                         st.markdown("### 🤖 Multi-Agent Analysis")
                         render_multi_agent_tab(result.get("multi_agent"))
+
+                        # Risk assessment & Paper Trade for not-interesting stocks too
+                        multi_agent_data = result.get("multi_agent")
+                        final_confidence = multi_agent_data.get("final_confidence", 0.0) if multi_agent_data else 0.0
+
+                        st.markdown("---")
+                        st.markdown("### 🛡️ Risk Assessment")
+
+                        _snap = st.session_state.portfolio_risk.snapshot()
+                        _indicators = result.get("indicators", {})
+                        _entry = result.get("price", 0.0)
+                        _atr = _indicators.get("atr", None)
+                        _stop = (
+                            _entry - (_atr * 1.5)
+                            if (_atr and _atr > 0 and _entry > 0)
+                            else _entry * 0.98
+                        )
+
+                        _size = st.session_state.position_sizer.calculate(
+                            entry_price=_entry,
+                            stop_loss=_stop,
+                            atr=_atr,
+                            confidence=final_confidence,
+                            reward_risk_ratio=2.0,
+                        )
+
+                        _validation = st.session_state.validator.validate(
+                            symbol=result["symbol"],
+                            position_value=_size.position_value,
+                            portfolio_value=_snap.portfolio_value,
+                            open_positions=_snap.open_positions,
+                            confidence=final_confidence,
+                            daily_pnl=_snap.daily_pnl,
+                            sector=None,
+                            sector_exposure=0.0,
+                            capital_at_risk=_size.capital_at_risk,
+                        )
+
+                        r_col1, r_col2, r_col3 = st.columns(3)
+                        with r_col1:
+                            st.metric("Suggested Shares", _size.shares)
+                        with r_col2:
+                            st.metric("Capital at Risk", f"{_size.capital_at_risk:,.0f}")
+                        with r_col3:
+                            st.metric("Position Size", f"{_size.position_value:,.0f}")
+
+                        if _validation.approved:
+                            st.success(
+                                f"✅ Risk Check Passed "
+                                f"({_validation.checks_passed}/{_validation.checks_total})"
+                            )
+                        else:
+                            st.error("❌ Risk Check Failed")
+                            for _reason in _validation.rejection_reasons:
+                                st.caption(f"• {_reason}")
+
+                        # # Paper Trade button
+                        # st.markdown("---")
+                        # st.markdown("### 📋 Paper Trade")
+                        # render_paper_trade_button(
+                        #     symbol=result["symbol"],
+                        #     result=result,
+                        #     position_size=_size,
+                        #     validation=_validation,
+                        # )
 
             else:
                 st.success("All stocks showed interesting signals!")

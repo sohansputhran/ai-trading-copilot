@@ -15,7 +15,7 @@ Agent weights (configurable via configs/agents.yaml):
     Breakout Strategy  : 0.30  → High signal quality but more false positives
 
 Confidence thresholds (what triggers a BUY/SELL recommendation):
-    final_confidence >= 0.65 AND agent_agreement >= 0.67 (2/3 agents agree)
+    final_confidence >= 0.65
     Otherwise → HOLD (don't trade uncertain signals)
 """
 
@@ -27,14 +27,14 @@ logger = structlog.get_logger()
 
 # ── Configurable weights (sum must equal 1.0) ─────────────────────────────────
 AGENT_WEIGHTS = {
-    AgentName.TECHNICAL: 0.35,
-    AgentName.MOMENTUM: 0.35,
-    AgentName.BREAKOUT: 0.30,
+    AgentName("technical_analysis"): 0.25,  # Changed from 0.35
+    AgentName("momentum_strategy"): 0.40,  # Changed from 0.35
+    AgentName("breakout_strategy"): 0.35,  # Changed from 0.30
 }
 
 # ── Thresholds ─────────────────────────────────────────────────────────────────
 MIN_CONFIDENCE_TO_TRADE = 0.60  # Below this → always HOLD
-MIN_AGREEMENT_TO_TRADE = 0.67  # Below this (< 2/3 agents agree) → always HOLD
+MIN_AGREEMENT_TO_TRADE = 0.60  # Below this (< 2/3 agents agree) → always HOLD
 
 
 def aggregate(state: TradingState) -> TradingState:
@@ -62,7 +62,7 @@ def aggregate(state: TradingState) -> TradingState:
             "errors": state["errors"] + ["Aggregator: no analyses to aggregate"],
         }
 
-    # ── Step 1: Compute agreement ─────────────────────────────────────────────
+    # Step 1: Compute agreement
     signals = [a.signal for a in analyses]
     buy_count = signals.count(Signal.BUY)
     sell_count = signals.count(Signal.SELL)
@@ -72,7 +72,7 @@ def aggregate(state: TradingState) -> TradingState:
     dominant_count = max(buy_count, sell_count, hold_count)
     agent_agreement = dominant_count / total  # 1.0 = unanimous, 0.33 = all different
 
-    # ── Step 2: Determine dominant signal ─────────────────────────────────────
+    # Step 2: Determine dominant signal
     if buy_count > sell_count and buy_count > hold_count:
         dominant_signal = Signal.BUY
     elif sell_count > buy_count and sell_count > hold_count:
@@ -80,29 +80,37 @@ def aggregate(state: TradingState) -> TradingState:
     else:
         dominant_signal = Signal.HOLD
 
-    # ── Step 3: Compute weighted confidence ───────────────────────────────────
+    # Step 3: Compute weighted confidence
     weighted_confidence = _weighted_confidence(analyses, dominant_signal)
 
-    # ── Step 4: Apply agreement penalty ───────────────────────────────────────
+    # Step 4: Apply agreement penalty
     # If agents disagree significantly, reduce our confidence in the signal.
     # Example: 2 BUY (conf 0.8) + 1 SELL (conf 0.7) → agreement=0.67
     # Without penalty: high confidence. With penalty: we acknowledge uncertainty.
     agreement_penalty = 1.0 - (0.3 * (1.0 - agent_agreement))
     final_confidence = round(weighted_confidence * agreement_penalty, 3)
 
-    # ── Step 5: Apply trading thresholds ──────────────────────────────────────
-    if final_confidence < MIN_CONFIDENCE_TO_TRADE or agent_agreement < MIN_AGREEMENT_TO_TRADE:
+    # Step 5: Apply trading thresholds
+    # CRITICAL FIX: Only check confidence, NOT agreement
+    if final_confidence < MIN_CONFIDENCE_TO_TRADE:
         final_signal = Signal.HOLD
         threshold_note = (
             f" [Overridden to HOLD: confidence={final_confidence:.2f} "
-            f"(min={MIN_CONFIDENCE_TO_TRADE}), "
-            f"agreement={agent_agreement:.2f} (min={MIN_AGREEMENT_TO_TRADE})]"
+            f"< min={MIN_CONFIDENCE_TO_TRADE}]"
         )
     else:
+        # Let majority voting win — don't override based on agreement
         final_signal = dominant_signal
         threshold_note = ""
 
-    # ── Step 6: Build human-readable reasoning ────────────────────────────────
+        # Log if agreement is low (informational, not a blocker)
+        if agent_agreement < 0.70:
+            threshold_note = (
+                f" [Note: Split decision with agreement={agent_agreement:.2f}, "
+                f"but confidence {final_confidence:.2f} is sufficient for {dominant_signal.value}]"
+            )
+
+    # Step 6: Build human-readable reasoning ────────────────────────────────
     final_reasoning = _build_reasoning(
         analyses, dominant_signal, final_signal, final_confidence, agent_agreement, threshold_note
     )

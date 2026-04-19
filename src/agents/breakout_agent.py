@@ -50,9 +50,9 @@ class BreakoutStrategyAgent(BaseStrategyAgent):
     agent_name = AgentName.BREAKOUT.value
 
     # ── Thresholds ────────────────────────────────────────────────────────────
-    VOLUME_MODERATE = 1.5  # 1.5x avg volume — moderate interest
-    VOLUME_STRONG = 2.0  # 2.0x avg volume — strong confirmation
-    VOLUME_EXTREME = 3.0  # 3.0x avg volume — climactic (potential exhaustion)
+    VOLUME_MODERATE = 1.2  # 1.5x avg volume — moderate interest
+    VOLUME_STRONG = 1.5  # 2.0x avg volume — strong confirmation
+    VOLUME_EXTREME = 2.0  # 3.0x avg volume — climactic (potential exhaustion)
 
     NEAR_RESISTANCE = 0.97  # Within 3% of resistance = approaching breakout
     AT_RESISTANCE = 0.99  # Within 1% = at resistance

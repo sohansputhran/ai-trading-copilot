@@ -50,7 +50,7 @@ class MomentumStrategyAgent(BaseStrategyAgent):
     agent_name = AgentName.MOMENTUM.value
 
     # ── Thresholds ────────────────────────────────────────────────────────────
-    ADX_WEAK_TREND = 20.0  # Below this → no clear trend, avoid momentum trades
+    ADX_WEAK_TREND = 15.0  # Below this → no clear trend, avoid momentum trades
     ADX_STRONG_TREND = 40.0  # Above this → strong trend, high conviction
 
     RSI_CHASE_LIMIT = 75.0  # Don't chase a BUY when RSI already this high

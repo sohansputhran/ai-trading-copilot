@@ -15,6 +15,7 @@ numpy>=1.26.0
 
 # Web framework & UI
 streamlit>=1.32.0
+plotly>=5.20.0
 fastapi>=0.110.0
 uvicorn>=0.29.0
 
@@ -34,3 +35,4 @@ mypy>=1.9.0
 python-dotenv>=1.0.0
 pydantic>=2.6.0
 tenacity>=8.2.0          # Retry logic for API calls
+psycopg2-binary==2.9.9
