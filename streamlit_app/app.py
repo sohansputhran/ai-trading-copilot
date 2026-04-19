@@ -440,38 +440,56 @@ if scan_button:
 
         # Run scan with progress updates
         results = []
+        
+        # Create collector once before the loop for fetching market data
+        collector = MarketDataCollector()
+        
         for i, symbol in enumerate(symbols):
             status_text.text(f"Scanning {symbol}... ({i+1}/{len(symbols)})")
             result = scanner.scan_stock(symbol)
+            
             if result:
                 # Run multi-agent analysis and attach to result
                 if orchestrator is not None:
                     try:
-                        multi = orchestrator.analyze(
-                            symbol,
-                            result.get("indicators", {}),  # market_data
-                            result.get("indicators", {}),  # indicators (same dict)
-                        )
-                        result["multi_agent"] = multi
-
-                        # Override single scanner classification with multi-agent decision.
-                        # A stock is "interesting" if the aggregator produced a
-                        # non-HOLD signal - confidence threshold already enforced
-                        # inside aggregator.py, so we trust the output directly.
-                        final_signal = multi.get("final_signal")
-                        if final_signal is not None:
-                            result["interesting"] = (
-                                final_signal.value in ("BUY", "SELL")
+                        # Fetch market data DataFrame for orchestrator
+                        # Try different method names (collector API may vary)
+                        market_data = None
+                        for method_name in ['get_data', 'fetch_data', 'fetch']:
+                            if hasattr(collector, method_name):
+                                try:
+                                    method = getattr(collector, method_name)
+                                    market_data = method(symbol)
+                                    break
+                                except:
+                                    pass
+                        
+                        if market_data is not None and not market_data.empty:
+                            # Call orchestrator with market_data DataFrame
+                            multi = orchestrator.analyze(
+                                symbol,
+                                market_data,                    # DataFrame with OHLCV data
+                                result.get("indicators", {}),   # Indicators dict
                             )
-                    except Exception:
+                            result["multi_agent"] = multi
+ 
+                            # Override scanner classification with multi-agent decision
+                            # A stock is "interesting" if final signal is BUY or SELL
+                            final_signal = multi.get("final_signal")
+                            if final_signal is not None:
+                                signal_value = final_signal.value if hasattr(final_signal, "value") else str(final_signal)
+                                result["interesting"] = (signal_value in ("BUY", "SELL"))
+                        else:
+                            result["multi_agent"] = None
+                            
+                    except Exception as e:
+                        # Log error but don't crash - keep single scanner classification
                         result["multi_agent"] = None
-                        # Keep single scanner classification on failure
                 else:
                     result["multi_agent"] = None
-                    # No orchestrator - single scanner classification stands
+                
                 results.append(result)
             progress_bar.progress((i + 1) / len(symbols))
-
         progress_bar.empty()
         status_text.empty()
 
