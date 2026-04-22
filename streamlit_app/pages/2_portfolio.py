@@ -9,6 +9,7 @@ Enhanced version with:
 
 import sys
 from pathlib import Path
+from datetime import datetime, timedelta
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -18,10 +19,12 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import yfinance as yf
 
 from src.execution.order_manager import OrderManager
 from src.execution.paper_broker import PaperBroker
 from src.risk_management.portfolio import PortfolioRisk
+from src.journal.repository import SQLiteRepository
 
 # Initialize session state objects if needed
 PORTFOLIO_VALUE = 500000
@@ -352,99 +355,236 @@ with viz_col1:
 
 with viz_col2:
     # Portfolio value over time line chart
-    # Get historical closed trades to build portfolio value history
-    from src.journal.repository import SQLiteRepository
+    # Build comprehensive daily portfolio value including both closed and open positions
     
-    try:
-        repo = SQLiteRepository(db_path="data/trades.db")
-        closed_trades = repo.get_all_trades()
+    def build_daily_portfolio_timeline():
+        """
+        Build a daily timeline of portfolio value including:
+        - Closed trades (realized P&L)
+        - Open positions (unrealized P&L calculated daily)
+        """
+        try:
+            repo = SQLiteRepository(db_path="data/trades.db")
+            closed_trades = repo.get_all_trades()
+            
+            # Get all trades (both open and closed)
+            all_entry_dates = []
+            
+            # Add closed trade entry dates
+            for trade in closed_trades:
+                all_entry_dates.append(trade.entry_timestamp)
+            
+            # Add open position entry dates
+            for order in open_positions:
+                # Use fill_timestamp (when position was opened) or created_at as fallback
+                timestamp = order.fill_timestamp or order.created_at
+                if timestamp:
+                    all_entry_dates.append(timestamp)
+            
+            if not all_entry_dates:
+                # No trades at all
+                return None
+            
+            # Find earliest and latest dates
+            start_date = min(all_entry_dates).date()
+            end_date = datetime.now().date()
+            
+            # Build daily timeline - initialize all days with starting value
+            daily_values = {}
+            current_date = start_date
+            
+            while current_date <= end_date:
+                daily_values[current_date] = PORTFOLIO_VALUE
+                current_date += timedelta(days=1)
+            
+            # Process closed trades - add realized P&L on exit date
+            for trade in closed_trades:
+                if trade.pnl is not None and trade.exit_timestamp:
+                    exit_date = trade.exit_timestamp.date()
+                    # Add realized P&L from this exit date onwards
+                    for date in daily_values.keys():
+                        if date >= exit_date:
+                            daily_values[date] += trade.pnl
+            
+            # Process open positions - calculate daily unrealized P&L
+            position_histories = {}  # Cache historical data
+            
+            for order in open_positions:
+                symbol = order.symbol
+                entry_price = order.fill_price or order.requested_price or 0.0
+                quantity = order.shares
+                
+                # Use fill_timestamp (when position was opened) or created_at as fallback
+                entry_timestamp = order.fill_timestamp or order.created_at
+                if not entry_timestamp:
+                    continue
+                    
+                entry_date = entry_timestamp.date()
+                
+                # Fetch historical prices for this symbol
+                if symbol not in position_histories:
+                    try:
+                        ticker_symbol = symbol if symbol.endswith('.NS') else f"{symbol}.NS"
+                        ticker = yf.Ticker(ticker_symbol)
+                        
+                        # Get historical data from entry date to today
+                        hist_data = ticker.history(start=entry_date, end=end_date + timedelta(days=1))
+                        
+                        if not hist_data.empty:
+                            position_histories[symbol] = hist_data
+                        else:
+                            position_histories[symbol] = None
+                    except:
+                        position_histories[symbol] = None
+                
+                hist_data = position_histories[symbol]
+                
+                if hist_data is not None and not hist_data.empty:
+                    # For each day this position was open, calculate unrealized P&L
+                    for date in daily_values.keys():
+                        if date >= entry_date:
+                            # Find the price for this date or the most recent previous date
+                            try:
+                                # Convert hist_data index to dates for comparison
+                                hist_dates = pd.to_datetime(hist_data.index).date
+                                
+                                if date in hist_dates:
+                                    # Exact match
+                                    price = float(hist_data.loc[hist_data.index.date == date, 'Close'].iloc[0])
+                                else:
+                                    # Use the most recent price before this date
+                                    past_prices = hist_data[pd.to_datetime(hist_data.index).date <= date]
+                                    if not past_prices.empty:
+                                        price = float(past_prices['Close'].iloc[-1])
+                                    else:
+                                        # No historical data yet, use entry price
+                                        price = entry_price
+                                
+                                unrealized_pnl = (price - entry_price) * quantity
+                                daily_values[date] += unrealized_pnl
+                            except Exception as e:
+                                # If we can't get price for this date, skip
+                                pass
+                else:
+                    # No historical data available, use current price for all dates
+                    current_price = get_current_price(symbol)
+                    if current_price > 0:
+                        for date in daily_values.keys():
+                            if date >= entry_date:
+                                unrealized_pnl = (current_price - entry_price) * quantity
+                                daily_values[date] += unrealized_pnl
+            
+            # Convert to DataFrame
+            timeline_data = [
+                {"Date": date, "Portfolio Value": value}
+                for date, value in sorted(daily_values.items())
+            ]
+            
+            return pd.DataFrame(timeline_data)
         
-        if closed_trades:
-            # Build portfolio value timeline
-            timeline = [{"Date": "Start", "Portfolio Value": PORTFOLIO_VALUE}]
-            running_value = PORTFOLIO_VALUE
-            
-            for trade in sorted(closed_trades, key=lambda t: t.exit_timestamp or t.entry_timestamp):
-                if trade.pnl is not None:
-                    running_value += trade.pnl
-                    date_str = trade.exit_timestamp.strftime("%Y-%m-%d") if trade.exit_timestamp else trade.entry_timestamp.strftime("%Y-%m-%d")
-                    timeline.append({
-                        "Date": date_str,
-                        "Portfolio Value": running_value
-                    })
-            
-            # Add current value
-            current_total = snapshot.portfolio_value + total_current_pnl
-            timeline.append({
-                "Date": "Current",
-                "Portfolio Value": current_total
-            })
-            
-            timeline_df = pd.DataFrame(timeline)
-            
-            fig_timeline = px.line(
-                timeline_df,
-                x="Date",
-                y="Portfolio Value",
-                title="Portfolio Value Over Time",
-                markers=True
-            )
-            fig_timeline.update_traces(
-                line=dict(color='#2196F3', width=3),
-                marker=dict(size=8)
-            )
-            fig_timeline.update_layout(
-                yaxis_tickprefix='₹',
-                yaxis_tickformat=',.0f',
-                hovermode='x unified',
-                height=400
-            )
-            fig_timeline.update_xaxes(title="")
-            fig_timeline.update_yaxes(title="Portfolio Value (₹)")
-            st.plotly_chart(fig_timeline, width='stretch')
-        else:
-            # No closed trades yet - show starting value only
-            fig_timeline = go.Figure()
-            current_total = snapshot.portfolio_value + total_current_pnl
-            
-            fig_timeline.add_trace(go.Scatter(
-                x=["Start", "Current"],
-                y=[PORTFOLIO_VALUE, current_total],
-                mode='lines+markers',
-                line=dict(color='#2196F3', width=3),
-                marker=dict(size=10),
-                hovertemplate='<b>%{x}</b><br>₹%{y:,.0f}<extra></extra>'
-            ))
-            
-            fig_timeline.update_layout(
-                title="Portfolio Value Over Time",
-                yaxis_tickprefix='₹',
-                yaxis_tickformat=',.0f',
-                xaxis_title="",
-                yaxis_title="Portfolio Value (₹)",
-                height=400,
-                showlegend=False
-            )
-            st.plotly_chart(fig_timeline, width='stretch')
+        except Exception as e:
+            return None
     
-    except Exception as e:
-        # Fallback if database access fails - show simple current value chart
+    # Build the timeline with a spinner
+    with st.spinner("Loading portfolio history..."):
+        timeline_df = build_daily_portfolio_timeline()
+    
+    if timeline_df is not None and len(timeline_df) > 0:
+        # Create the line chart
+        fig_timeline = px.line(
+            timeline_df,
+            x="Date",
+            y="Portfolio Value",
+            title="Portfolio Value Over Time (Daily)",
+            markers=True
+        )
+        fig_timeline.update_traces(
+            line=dict(color='#2196F3', width=3),
+            marker=dict(size=6),
+            hovertemplate='<b>%{x|%Y-%m-%d}</b><br>₹%{y:,.0f}<extra></extra>'
+        )
+        fig_timeline.update_layout(
+            yaxis_tickprefix='₹',
+            yaxis_tickformat=',.0f',
+            hovermode='x unified',
+            height=400,
+            xaxis=dict(
+                type='date',
+                tickformat='%Y-%m-%d',
+            )
+        )
+        fig_timeline.update_xaxes(title="Date")
+        fig_timeline.update_yaxes(title="Portfolio Value (₹)")
+        
+        # Add a horizontal line at starting value for reference
+        fig_timeline.add_hline(
+            y=PORTFOLIO_VALUE,
+            line_dash="dash",
+            line_color="gray",
+            opacity=0.5,
+            annotation_text=f"Start: ₹{PORTFOLIO_VALUE:,.0f}",
+            annotation_position="right"
+        )
+        
+        # Calculate and show total change
+        start_value = timeline_df['Portfolio Value'].iloc[0]
+        end_value = timeline_df['Portfolio Value'].iloc[-1]
+        total_change = end_value - start_value
+        total_change_pct = (total_change / start_value) * 100 if start_value > 0 else 0
+        
+        st.plotly_chart(fig_timeline, width='stretch')
+        
+        # Show summary stats below the chart
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Change", f"₹{total_change:+,.0f}", f"{total_change_pct:+.2f}%")
+        with col2:
+            st.metric("Days Tracked", len(timeline_df))
+        with col3:
+            max_value = timeline_df['Portfolio Value'].max()
+            st.metric("Peak Value", f"₹{max_value:,.0f}")
+        
+    else:
+        # Fallback - simple current value chart
         fig_timeline = go.Figure()
         current_total = snapshot.portfolio_value + total_current_pnl
         
+        if open_positions:
+            # Get earliest entry date from open positions
+            entry_dates = []
+            for order in open_positions:
+                timestamp = order.fill_timestamp or order.created_at
+                if timestamp:
+                    entry_dates.append(timestamp)
+            
+            if entry_dates:
+                earliest_date = min(entry_dates)
+            else:
+                earliest_date = datetime.now()
+        else:
+            earliest_date = datetime.now()
+        
+        dates = [earliest_date.date(), datetime.now().date()]
+        values = [PORTFOLIO_VALUE, current_total]
+        
         fig_timeline.add_trace(go.Scatter(
-            x=["Start", "Current"],
-            y=[PORTFOLIO_VALUE, current_total],
+            x=dates,
+            y=values,
             mode='lines+markers',
             line=dict(color='#2196F3', width=3),
-            marker=dict(size=10)
+            marker=dict(size=10),
+            hovertemplate='<b>%{x}</b><br>₹%{y:,.0f}<extra></extra>'
         ))
         
         fig_timeline.update_layout(
             title="Portfolio Value Over Time",
             yaxis_tickprefix='₹',
             yaxis_tickformat=',.0f',
-            height=400
+            xaxis_title="Date",
+            yaxis_title="Portfolio Value (₹)",
+            height=400,
+            showlegend=False,
+            xaxis=dict(type='date')
         )
         st.plotly_chart(fig_timeline, width='stretch')
 
