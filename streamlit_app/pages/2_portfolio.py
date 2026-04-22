@@ -152,7 +152,6 @@ st.sidebar.metric(
 st.sidebar.metric(
     "Deployed",
     f"₹{snapshot.total_position_value:,.0f}",
-    f"{snapshot.total_deployed_pct * 100:.1f}%"
 )
 
 st.sidebar.metric(
@@ -239,51 +238,215 @@ st.sidebar.caption("💡 Prices update automatically")
 st.title("💼 Portfolio Dashboard")
 st.markdown("*Real-time view of your paper trading positions*")
 
+# Calculate total P&L from all positions
+total_current_pnl = 0.0
+for order in open_positions:
+    symbol = order.symbol
+    entry_price = order.fill_price or order.requested_price or 0.0
+    quantity = order.shares
+    
+    current_price = get_current_price(symbol)
+    if current_price == 0.0:
+        current_price = entry_price
+    
+    pnl = (current_price - entry_price) * quantity
+    total_current_pnl += pnl
+
 # Portfolio metrics row
 st.markdown("## 📊 Portfolio Metrics")
 
-metric_col1, metric_col2, metric_col3, metric_col4, metric_col5 = st.columns(5)
+metric_col1, metric_col2, metric_col3 = st.columns(3)
 
 with metric_col1:
+    total_portfolio_value = snapshot.portfolio_value + total_current_pnl
     st.metric(
         "Portfolio Value",
-        f"₹{snapshot.portfolio_value:,.0f}",
-        help="Total capital available"
+        f"₹{total_portfolio_value:,.0f}",
+        delta=f"₹{total_current_pnl:+,.0f}" if total_current_pnl != 0 else None,
+        help="Total portfolio value (starting capital + unrealized P&L)"
     )
 
 with metric_col2:
-    st.metric(
-    label="Capital Deployed",
-    value=f"₹{snapshot.total_position_value:,}",
-    help="Amount currently invested in open positions"
-    # delta=f"{snapshot.total_deployed_pct:+.1f}%",  # Added + sign
-    # delta_color="normal"  # This makes it GREEN/RED
-)
-
-with metric_col3:
     st.metric(
         "Available Capital",
         f"₹{snapshot.available_capital:,.0f}",
         help="Capital available for new positions"
     )
 
-with metric_col4:
+with metric_col3:
     st.metric(
         "Total Risk",
         f"₹{snapshot.total_capital_at_risk:,.0f}",
-        # f"{snapshot.total_risk_pct * 100:.2f}%",
-        # delta_color="off",  # Neutral color
         help="Total risk across all open positions"
     )
 
+st.divider()
 
+# Portfolio Visualizations Section
+st.markdown("## 📊 Portfolio Visualizations")
 
-with metric_col5:
-    st.metric(
-        "Open Positions",
-        f"{len(open_positions)}/5",
-        help="Number of open positions (max 5)"
-    )
+viz_col1, viz_col2 = st.columns(2)
+
+with viz_col1:
+    # Portfolio allocation pie chart
+    if open_positions:
+        # Calculate current values for each position
+        allocation_data = []
+        for order in open_positions:
+            symbol = order.symbol
+            entry_price = order.fill_price or order.requested_price or 0.0
+            quantity = order.shares
+            
+            current_price = get_current_price(symbol)
+            if current_price == 0.0:
+                current_price = entry_price
+            
+            current_value = quantity * current_price
+            allocation_data.append({
+                "Stock": symbol,
+                "Value": current_value
+            })
+        
+        # Add cash position
+        allocation_data.append({
+            "Stock": "Cash",
+            "Value": snapshot.available_capital
+        })
+        
+        allocation_df = pd.DataFrame(allocation_data)
+        
+        fig_allocation = px.pie(
+            allocation_df,
+            values="Value",
+            names="Stock",
+            title="Portfolio Allocation",
+            hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Set3
+        )
+        fig_allocation.update_traces(
+            textposition='inside',
+            textinfo='percent+label',
+            hovertemplate='<b>%{label}</b><br>₹%{value:,.0f}<br>%{percent}<extra></extra>'
+        )
+        fig_allocation.update_layout(
+            showlegend=True,
+            height=400
+        )
+        st.plotly_chart(fig_allocation, width='stretch')
+    else:
+        # Show 100% cash if no positions
+        fig_allocation = px.pie(
+            values=[snapshot.portfolio_value],
+            names=["Cash"],
+            title="Portfolio Allocation",
+            hole=0.4,
+            color_discrete_sequence=['#90CAF9']
+        )
+        fig_allocation.update_traces(
+            textposition='inside',
+            textinfo='percent+label',
+            hovertemplate='<b>%{label}</b><br>₹%{value:,.0f}<br>%{percent}<extra></extra>'
+        )
+        fig_allocation.update_layout(height=400)
+        st.plotly_chart(fig_allocation, width='stretch')
+
+with viz_col2:
+    # Portfolio value over time line chart
+    # Get historical closed trades to build portfolio value history
+    from src.journal.repository import SQLiteRepository
+    
+    try:
+        repo = SQLiteRepository(db_path="data/trades.db")
+        closed_trades = repo.get_all_trades()
+        
+        if closed_trades:
+            # Build portfolio value timeline
+            timeline = [{"Date": "Start", "Portfolio Value": PORTFOLIO_VALUE}]
+            running_value = PORTFOLIO_VALUE
+            
+            for trade in sorted(closed_trades, key=lambda t: t.exit_timestamp or t.entry_timestamp):
+                if trade.pnl is not None:
+                    running_value += trade.pnl
+                    date_str = trade.exit_timestamp.strftime("%Y-%m-%d") if trade.exit_timestamp else trade.entry_timestamp.strftime("%Y-%m-%d")
+                    timeline.append({
+                        "Date": date_str,
+                        "Portfolio Value": running_value
+                    })
+            
+            # Add current value
+            current_total = snapshot.portfolio_value + total_current_pnl
+            timeline.append({
+                "Date": "Current",
+                "Portfolio Value": current_total
+            })
+            
+            timeline_df = pd.DataFrame(timeline)
+            
+            fig_timeline = px.line(
+                timeline_df,
+                x="Date",
+                y="Portfolio Value",
+                title="Portfolio Value Over Time",
+                markers=True
+            )
+            fig_timeline.update_traces(
+                line=dict(color='#2196F3', width=3),
+                marker=dict(size=8)
+            )
+            fig_timeline.update_layout(
+                yaxis_tickprefix='₹',
+                yaxis_tickformat=',.0f',
+                hovermode='x unified',
+                height=400
+            )
+            fig_timeline.update_xaxes(title="")
+            fig_timeline.update_yaxes(title="Portfolio Value (₹)")
+            st.plotly_chart(fig_timeline, width='stretch')
+        else:
+            # No closed trades yet - show starting value only
+            fig_timeline = go.Figure()
+            current_total = snapshot.portfolio_value + total_current_pnl
+            
+            fig_timeline.add_trace(go.Scatter(
+                x=["Start", "Current"],
+                y=[PORTFOLIO_VALUE, current_total],
+                mode='lines+markers',
+                line=dict(color='#2196F3', width=3),
+                marker=dict(size=10),
+                hovertemplate='<b>%{x}</b><br>₹%{y:,.0f}<extra></extra>'
+            ))
+            
+            fig_timeline.update_layout(
+                title="Portfolio Value Over Time",
+                yaxis_tickprefix='₹',
+                yaxis_tickformat=',.0f',
+                xaxis_title="",
+                yaxis_title="Portfolio Value (₹)",
+                height=400,
+                showlegend=False
+            )
+            st.plotly_chart(fig_timeline, width='stretch')
+    
+    except Exception as e:
+        # Fallback if database access fails - show simple current value chart
+        fig_timeline = go.Figure()
+        current_total = snapshot.portfolio_value + total_current_pnl
+        
+        fig_timeline.add_trace(go.Scatter(
+            x=["Start", "Current"],
+            y=[PORTFOLIO_VALUE, current_total],
+            mode='lines+markers',
+            line=dict(color='#2196F3', width=3),
+            marker=dict(size=10)
+        ))
+        
+        fig_timeline.update_layout(
+            title="Portfolio Value Over Time",
+            yaxis_tickprefix='₹',
+            yaxis_tickformat=',.0f',
+            height=400
+        )
+        st.plotly_chart(fig_timeline, width='stretch')
 
 st.divider()
 
