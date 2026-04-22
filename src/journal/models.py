@@ -111,7 +111,13 @@ def _parse_timestamp(value) -> datetime:
     if isinstance(value, datetime):
         return value
     # SQLite stores datetimes as ISO strings
-    for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
+    # Try formats in order of likelihood (most common first)
+    for fmt in (
+        "%Y-%m-%dT%H:%M:%S.%f",  # ISO with microseconds: 2026-04-19T10:09:22.828670
+        "%Y-%m-%d %H:%M:%S.%f",  # Space-separated with microseconds
+        "%Y-%m-%dT%H:%M:%S",     # ISO without microseconds
+        "%Y-%m-%d %H:%M:%S",     # Space-separated without microseconds
+    ):
         try:
             return datetime.strptime(value, fmt)
         except (ValueError, TypeError):

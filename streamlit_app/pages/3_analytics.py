@@ -135,12 +135,12 @@ if equity_data:
 
         st.line_chart(
             eq_df.set_index("date")["cumulative_pnl"],
-            use_container_width=True,
+            width="stretch",
         )
         st.caption("Cumulative realised P&L across all closed paper trades.")
     except ImportError:
         # Fallback: display as table if pandas unavailable
-        st.dataframe(equity_data, use_container_width=True)
+        st.dataframe(equity_data, width="stretch")
 else:
     st.info("No equity curve data available yet.")
 
@@ -169,7 +169,7 @@ if breakdown:
                 "Expectancy": f"₹{m['expectancy']:,.0f}" if m["expectancy"] is not None else "—",
             })
 
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
     except ImportError:
         st.json(breakdown)
 
@@ -203,7 +203,7 @@ try:
         })
 
     df = pd.DataFrame(rows)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(df, width="stretch", hide_index=True)
 
 except ImportError:
     for t in sorted(trades, key=lambda x: x.exit_timestamp, reverse=True):

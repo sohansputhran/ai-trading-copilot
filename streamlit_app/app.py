@@ -172,7 +172,7 @@ def render_open_positions_table() -> None:
             "Order ID":          o.order_id[:8] + "…",
         })
 
-    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
 
     st.caption("Close a position:")
     close_cols = st.columns(min(len(open_positions), 5))
