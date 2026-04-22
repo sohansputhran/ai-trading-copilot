@@ -134,52 +134,19 @@ portfolio = st.session_state.portfolio_risk
 open_positions = order_manager.get_open_positions()
 snapshot = portfolio.snapshot()
 
-# SIDEBAR
-
-st.sidebar.title("💼 Portfolio")
-st.sidebar.markdown("---")
-
-# Quick stats in sidebar
-st.sidebar.markdown("### 📊 Quick Stats")
-
-num_positions = len(open_positions)
-max_positions = 5
-slots_remaining = max_positions - num_positions
-
-st.sidebar.metric(
-    "Position Slots",
-    f"{num_positions}/{max_positions}",
-    f"{slots_remaining} remaining"
-)
-
-st.sidebar.metric(
-    "Deployed",
-    f"₹{snapshot.total_position_value:,.0f}",
-)
-
-st.sidebar.metric(
-    "Available",
-    f"₹{snapshot.available_capital:,.0f}"
-)
-
-st.sidebar.markdown("---")
-
-# Quick actions in sidebar
-st.sidebar.markdown("### 🚀 Quick Actions")
-
-if st.sidebar.button("🔄 Refresh All Prices", width="stretch"):
-    st.rerun()
-
-if st.sidebar.button("📊 View Analytics", width="stretch"):
-    st.switch_page("pages/3_analytics.py")
-
-if st.sidebar.button("🔍 Back to Scanner", width="stretch"):
-    st.switch_page("app.py")
-
-st.sidebar.markdown("---")
-
-# Portfolio insights in sidebar
-st.sidebar.markdown("### 💡 Insights")
+# Calculate total P&L from all positions
+total_current_pnl = 0.0
+for order in open_positions:
+    symbol = order.symbol
+    entry_price = order.fill_price or order.requested_price or 0.0
+    quantity = order.shares
+    
+    current_price = get_current_price(symbol)
+    if current_price == 0.0:
+        current_price = entry_price
+    
+    pnl = (current_price - entry_price) * quantity
+    total_current_pnl += pnl
 
 if open_positions:
     # Calculate insights
@@ -208,7 +175,47 @@ if open_positions:
         if pnl < worst_pnl:
             worst_pnl = pnl
             worst_performer = symbol
-    
+
+# SIDEBAR
+
+st.sidebar.title("💼 Portfolio")
+st.sidebar.markdown("---")
+
+# Quick stats in sidebar
+st.sidebar.markdown("### 📊 Quick Stats")
+
+total_portfolio_value = snapshot.portfolio_value + total_current_pnl
+st.sidebar.metric(
+    "Portfolio Value",
+    f"₹{total_portfolio_value:,.0f}",
+    delta=f"₹{total_current_pnl:+,.0f}" if total_current_pnl != 0 else None
+)
+
+st.sidebar.metric(
+    "Available Capital",
+    f"₹{snapshot.available_capital:,.0f}"
+)
+
+st.sidebar.markdown("---")
+
+# Quick actions in sidebar
+st.sidebar.markdown("### 🚀 Quick Actions")
+
+if st.sidebar.button("🔄 Refresh All Prices", width="stretch"):
+    st.rerun()
+
+if st.sidebar.button("📊 View Analytics", width="stretch"):
+    st.switch_page("pages/3_analytics.py")
+
+if st.sidebar.button("🔍 Back to Scanner", width="stretch"):
+    st.switch_page("app.py")
+
+st.sidebar.markdown("---")
+
+# Portfolio insights in sidebar
+st.sidebar.markdown("### 💡 Insights")
+
+if open_positions:
     # Display insights
     if best_performer:
         st.sidebar.success(f"🏆 **Best**: {best_performer}")
@@ -284,9 +291,6 @@ with metric_col3:
     )
 
 st.divider()
-
-# Portfolio Visualizations Section
-st.markdown("## 📊 Portfolio Visualizations")
 
 viz_col1, viz_col2 = st.columns(2)
 
