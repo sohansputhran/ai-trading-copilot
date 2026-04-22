@@ -424,7 +424,7 @@ if PAPER_TRADING_AVAILABLE and st.session_state.get("order_manager"):
         
         # Link to portfolio page
         st.sidebar.page_link(
-            "pages/3_portfolio.py",
+            "pages/2_portfolio.py",
             label="📊 View Full Portfolio",
             icon="💼",
         )

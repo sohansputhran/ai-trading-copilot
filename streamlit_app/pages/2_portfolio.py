@@ -66,6 +66,65 @@ st.set_page_config(
     layout="wide"
 )
 
+# Helper function to display metrics with color coding
+def colored_metric(label: str, value: float, prefix: str = "₹", postfix: str = "%",
+                   delta: str = None, help_text: str = None,
+                   threshold: float = 0.0):
+    """
+    Display a metric with colored main value based on profit/loss.
+    
+    Args:
+        label: Metric label (e.g., "Total P&L")
+        value: Numeric value (e.g., 48610)
+        prefix: Currency symbol (default: "₹")
+        delta: Optional delta text (e.g., "↑ 9.7%")
+        help_text: Optional help tooltip
+    """
+    
+    # Determine color based on value
+    if value > threshold:
+        color = "#00C853"  # Green
+    elif value < 0:
+        color = "#FF1744"  # Red  
+    else:
+        color = "#757575"  # Gray
+    
+    # Format the value
+    if prefix == " ":
+        formatted_value = f"{abs(value):,.0f}{postfix}"
+    else:
+        formatted_value = f"{prefix}{abs(value):,.0f}"
+    
+    # Build HTML
+    html = f"""
+    <div style="padding: 10px 0;">
+        <p style="font-size: 20px; font-weight: bold; margin: 0 0 5px 0;">
+            {label}
+        </p>
+        <p style="color: {color}; font-size: 32px; font-weight: bold; margin: 0;">
+            {formatted_value}
+        </p>
+    """
+    
+    if delta:
+        # Determine delta color
+        if "↑" in delta or delta.startswith("+"):
+            delta_color = "#00C853"  # Green
+        elif "↓" in delta or delta.startswith("-"):
+            delta_color = "#FF1744"  # Red
+        else:
+            delta_color = "#888"
+        
+        # html += f"""
+        # <p style="color: {delta_color}; font-size: 14px; margin: 5px 0 0 0;">
+        #     {delta}
+        # </p>
+        # """
+    
+    html += "</div>"
+    
+    st.markdown(html, unsafe_allow_html=True)
+
 # Get data
 order_manager = st.session_state.order_manager
 portfolio = st.session_state.portfolio_risk
@@ -196,8 +255,9 @@ with metric_col2:
     st.metric(
     label="Capital Deployed",
     value=f"₹{snapshot.total_position_value:,}",
-    delta=f"{snapshot.total_deployed_pct:+.1f}%",  # Added + sign
-    delta_color="normal"  # This makes it GREEN/RED
+    help="Amount currently invested in open positions"
+    # delta=f"{snapshot.total_deployed_pct:+.1f}%",  # Added + sign
+    # delta_color="normal"  # This makes it GREEN/RED
 )
 
 with metric_col3:
@@ -211,9 +271,12 @@ with metric_col4:
     st.metric(
         "Total Risk",
         f"₹{snapshot.total_capital_at_risk:,.0f}",
-        f"{snapshot.total_risk_pct * 100:.2f}%",
-        delta_color="off"  # Neutral color
+        # f"{snapshot.total_risk_pct * 100:.2f}%",
+        # delta_color="off",  # Neutral color
+        help="Total risk across all open positions"
     )
+
+
 
 with metric_col5:
     st.metric(
@@ -289,47 +352,36 @@ else:
     pnl_col1, pnl_col2, pnl_col3 = st.columns(3)
     
     with pnl_col1:
-        # Color-coded P&L metric
-        if total_pnl >= 0:
-            # Profit - show as positive with normal delta color
-            st.metric(
-                "Total P&L",
-                f"₹{total_pnl:+,.0f}",
-                f"{total_pnl_pct:+.2f}%"
-            )
-        else:
-            # Loss - show as negative with inverse delta color  
-            st.metric(
-                "Total P&L",
-                f"₹{total_pnl:+,.0f}",
-                f"{total_pnl_pct:+.2f}%",
-                delta_color="inverse"
-            )
+        colored_metric(
+            label="Total P&L",
+            value=total_pnl,
+            prefix="₹",
+            delta=f"↑ {total_pnl_pct}%",
+            help_text="Total profit/loss across all closed positions"
+        )
     
     with pnl_col2:
         winning = sum(1 for p in position_data if p["pnl"] >= 0)
         losing = len(position_data) - winning
         win_rate = (winning / len(position_data) * 100) if position_data else 0
-        st.metric(
-            "Win Rate",
-            f"{win_rate:.0f}%",
-            f"{winning}W / {losing}L",
-            delta_color="off"
+        
+        colored_metric(
+            label="Win Rate",
+            value=win_rate,
+            delta=f"{winning}W / {losing}L",
+            prefix= " ",
+            help_text="Percentage of winning trades",
+            threshold=50.0  # Green if >= 50%, Red if < 50%
         )
     
     with pnl_col3:
         avg_pnl = total_pnl / len(position_data) if position_data else 0
-        if avg_pnl >= 0:
-            st.metric(
-                "Avg P&L per Position",
-                f"₹{avg_pnl:+,.0f}"
-            )
-        else:
-            st.metric(
-                "Avg P&L per Position",
-                f"₹{avg_pnl:+,.0f}",
-                delta_color="inverse"
-            )
+        colored_metric(
+            label="Avg P&L per Position",
+            value=avg_pnl,
+            prefix="₹",
+            help_text="Average profit/loss per closed position"
+        )
     
     st.divider()
     
