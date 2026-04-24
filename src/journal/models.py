@@ -115,8 +115,8 @@ def _parse_timestamp(value) -> datetime:
     for fmt in (
         "%Y-%m-%dT%H:%M:%S.%f",  # ISO with microseconds: 2026-04-19T10:09:22.828670
         "%Y-%m-%d %H:%M:%S.%f",  # Space-separated with microseconds
-        "%Y-%m-%dT%H:%M:%S",     # ISO without microseconds
-        "%Y-%m-%d %H:%M:%S",     # Space-separated without microseconds
+        "%Y-%m-%dT%H:%M:%S",  # ISO without microseconds
+        "%Y-%m-%d %H:%M:%S",  # Space-separated without microseconds
     ):
         try:
             return datetime.strptime(value, fmt)
