@@ -25,6 +25,7 @@ from src.execution.order_manager import OrderManager
 from src.execution.paper_broker import PaperBroker
 from src.risk_management.portfolio import PortfolioRisk
 from src.journal.repository import SQLiteRepository
+from src.journal.analytics import PerformanceEngine
 
 # Initialize session state objects if needed
 PORTFOLIO_VALUE = 500000
@@ -134,8 +135,13 @@ portfolio = st.session_state.portfolio_risk
 open_positions = order_manager.get_open_positions()
 snapshot = portfolio.snapshot()
 
-# Calculate total P&L from all positions
-total_current_pnl = 0.0
+# Calculate REALIZED P&L from closed trades
+repo = SQLiteRepository(db_path="data/trades.db")
+closed_trades = repo.get_closed_trades()
+total_realized_pnl = sum(trade.pnl for trade in closed_trades)
+
+# Calculate UNREALIZED P&L from open positions
+total_unrealized_pnl = 0.0
 for order in open_positions:
     symbol = order.symbol
     entry_price = order.fill_price or order.requested_price or 0.0
@@ -146,7 +152,7 @@ for order in open_positions:
         current_price = entry_price
     
     pnl = (current_price - entry_price) * quantity
-    total_current_pnl += pnl
+    total_unrealized_pnl += pnl
 
 if open_positions:
     # Calculate insights
@@ -184,11 +190,14 @@ st.sidebar.markdown("---")
 # Quick stats in sidebar
 st.sidebar.markdown("### 📊 Quick Stats")
 
-total_portfolio_value = snapshot.portfolio_value + total_current_pnl
+# Calculate combined P&L for delta
+combined_pnl = total_realized_pnl + total_unrealized_pnl
+
+total_portfolio_value = snapshot.portfolio_value + total_realized_pnl + total_unrealized_pnl
 st.sidebar.metric(
     "Portfolio Value",
     f"₹{total_portfolio_value:,.0f}",
-    delta=f"₹{total_current_pnl:+,.0f}" if total_current_pnl != 0 else None
+    delta=f"₹{combined_pnl:+,.0f}" if combined_pnl != 0 else None
 )
 
 st.sidebar.metric(
@@ -268,12 +277,13 @@ st.markdown("## 📊 Portfolio Metrics")
 metric_col1, metric_col2, metric_col3 = st.columns(3)
 
 with metric_col1:
-    total_portfolio_value = snapshot.portfolio_value + total_current_pnl
+    # Use the already calculated total_portfolio_value from above
+    # Don't recalculate it here!
     st.metric(
         "Portfolio Value",
         f"₹{total_portfolio_value:,.0f}",
-        delta=f"₹{total_current_pnl:+,.0f}" if total_current_pnl != 0 else None,
-        help="Total portfolio value (starting capital + unrealized P&L)"
+        delta=f"₹{combined_pnl:+,.0f}" if combined_pnl != 0 else None,
+        help="Total portfolio value (starting capital + realized P&L + unrealized P&L)"
     )
 
 with metric_col2:
