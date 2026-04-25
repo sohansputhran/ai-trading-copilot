@@ -150,9 +150,24 @@ REASON: {analysis['reason']}"""
         return results
 
 
+# Nifty 50 sample — duplicated here so app.py can import it from this module
+# when scanner_agent fails to load (e.g. no HuggingFace token on Streamlit Cloud).
+NIFTY_50_SAMPLE: list[str] = [
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "ICICIBANK.NS",
+    "HINDUNILVR.NS",
+    "ITC.NS",
+    "SBIN.NS",
+    "BHARTIARTL.NS",
+    "KOTAKBANK.NS",
+]
+
+
 # For testing
 if __name__ == "__main__":
-    from src.agents.scanner_agent import NIFTY_50_SAMPLE
 
     print("\n" + "=" * 60)
     print("🤖 Rule-Based Scanner - Test Run")
