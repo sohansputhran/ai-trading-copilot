@@ -57,7 +57,6 @@ from src.agents.state import Signal
 from src.risk_management.portfolio import PortfolioRisk, Position
 from src.risk_management.position_sizer import PositionSizer
 from src.risk_management.validators import PreTradeValidator
-from streamlit_app.components.risk_sidebar import render_risk_sidebar
 
 PORTFOLIO_VALUE = float(os.getenv("PORTFOLIO_VALUE", "500000"))
 
@@ -252,60 +251,52 @@ def render_paper_trade_button(symbol: str, result: dict, position_size, validati
                 f"@ ₹{order.fill_price:,.2f} (slippage ₹{order.slippage:+.2f})"
             )
         else:
-            st.error(f"⚡ Auto-trade rejected for {symbol} — could not fetch live price.")
+            st.error(
+                f"⚡ Auto-trade rejected for {symbol} — could not fetch live price. "
+                f"Make sure the symbol ends with .NS (e.g. RELIANCE.NS)."
+            )
         return
 
     # Manual button path
     if not validation.approved:
         st.warning("⚠️ Risk check failed — proceeding at your own discretion.")
-    
-    # DEBUG: Show state before button
-    st.write(f"🔍 DEBUG: About to render button for {symbol}")
-    st.write(f"   validation.approved = {validation.approved}")
-    st.write(f"   order_manager = {order_manager is not None}")
-    
+
     btn_col, status_col = st.columns([1, 3])
-    
+
     with btn_col:
-        button_key = f"paper_trade_{symbol}_{i}"
-        
+        # Use symbol as part of key — must be unique per render call
+        button_key = f"paper_trade_{symbol}"
         clicked = st.button(
             "📋 Paper Trade",
             key=button_key,
             type="primary",
-            help="Execute a paper trade",
+            help="Execute a paper trade at the current live market price",
         )
-        
-        # DEBUG: Show if button was clicked
-        st.write(f"🔍 clicked = {clicked}")
-    
-    # Handle button click
+
     if clicked:
-        st.write(f"✅ Button clicked! Executing trade...")
-        
         with status_col:
             with st.spinner(f"Executing paper trade for {symbol}..."):
                 try:
-                    st.write(f"🔍 Calling order_manager.submit()...")
                     order = order_manager.submit(decision)
-                    
-                    st.write(f"🔍 Order returned: {order}")
-                    st.write(f"   fill_price = {order.fill_price}")
-                    
+
                     if order.fill_price:
                         st.success(
-                            f"✅ Filled {order.shares} × {symbol} @ ₹{order.fill_price:,.2f}"
+                            f"✅ Filled {order.shares} × {symbol} "
+                            f"@ ₹{order.fill_price:,.2f} "
+                            f"(slippage ₹{order.slippage:+.2f})"
                         )
                         st.rerun()
                     else:
-                        st.error(f"❌ No fill price")
-                        
+                        st.error(
+                            f"❌ Order rejected for {symbol} — could not fetch live price from Yahoo Finance. "
+                            f"Status: {order.status.value}. "
+                            f"Try again or check your internet connection."
+                        )
+
                 except Exception as e:
-                    st.error(f"❌ Exception: {str(e)}")
                     import traceback
+                    st.error(f"❌ Exception while placing order: {str(e)}")
                     st.code(traceback.format_exc())
-    else:
-        st.write(f"ℹ️ Button not clicked this run")
 
 
 # Session state - initialised once per session
@@ -402,68 +393,7 @@ with st.sidebar.expander("🔑 HuggingFace API Token", expanded=not st.session_s
         st.info("ℹ️ No token — rule-based scanner will be used")
 # ─────────────────────────────────────────────────────────────
 
-# Risk sidebar — always visible
-render_risk_sidebar(
-    snapshot=st.session_state.portfolio_risk.snapshot(),
-    sizing_method=os.getenv("SIZING_METHOD", "fixed_fractional"),
-)
-
 st.sidebar.divider()
- 
-if PAPER_TRADING_AVAILABLE and st.session_state.get("order_manager"):
-    order_manager = st.session_state.order_manager
-    open_positions = order_manager.get_open_positions()
-    
-    st.sidebar.markdown("### 💼 Portfolio")
-    
-    if open_positions:
-        # Calculate quick summary
-        total_pnl = 0.0
-        winning = 0
-        
-        for order in open_positions:
-            symbol = order.symbol
-            entry_price = order.fill_price or order.requested_price or 0.0
-            quantity = order.shares
-            
-            # Get current price (use simple approach)
-            try:
-                import yfinance as yf
-                ticker = yf.Ticker(symbol + ".NS" if not symbol.endswith(".NS") else symbol)
-                data = ticker.history(period="1d")
-                current_price = float(data['Close'].iloc[-1]) if not data.empty else entry_price
-            except:
-                current_price = entry_price
-            
-            # Calculate P&L
-            pnl = (current_price - entry_price) * quantity
-            total_pnl += pnl
-            if pnl >= 0:
-                winning += 1
-        
-        # Display summary
-        summary_col1, summary_col2 = st.sidebar.columns(2)
-        
-        with summary_col1:
-            st.metric("Positions", f"{len(open_positions)}")
-        
-        with summary_col2:
-            pnl_color = "🟢" if total_pnl >= 0 else "🔴"
-            st.metric("Total P&L", f"{pnl_color} ₹{total_pnl:+,.0f}")
-        
-        st.sidebar.caption(f"{winning}W / {len(open_positions)-winning}L")
-        
-        # Link to portfolio page
-        st.sidebar.page_link(
-            "pages/2_portfolio.py",
-            label="📊 View Full Portfolio",
-            icon="💼",
-        )
-    else:
-        st.sidebar.caption("_No open positions_")
-        st.sidebar.caption("Run scanner to find trades")
-else:
-    st.sidebar.caption("Paper trading not available")
 
 # Stock selection
 scan_option = st.sidebar.radio(
@@ -783,26 +713,11 @@ if scan_button:
 
                             # Update sidebar with proposed trade
                             with st.sidebar:
-                                render_risk_sidebar(
-                                    snapshot=_snap,
-                                    sizing_method=os.getenv("SIZING_METHOD", "fixed_fractional"),
-                                    selected_symbol=result["symbol"],
-                                    proposed_size={
-                                        "shares": _size.shares,
-                                        "position_value": _size.position_value,
-                                        "capital_at_risk": _size.capital_at_risk,
-                                        "fraction_used": _size.fraction_used,
-                                        "reasoning": _size.reasoning,
-                                        "approved": _validation.approved,
-                                        "rejection_reasons": _validation.rejection_reasons,
-                                    },
-                                )
-
                                 # Analytics page link
                                 st.sidebar.divider()
                                 st.sidebar.markdown("### 📊 Analytics")
                                 st.sidebar.page_link(
-                                    "pages/4_analytics.py",
+                                    "pages/3_analytics.py",
                                     label="View Trade Analytics",
                                     icon="📈",
                                 )
