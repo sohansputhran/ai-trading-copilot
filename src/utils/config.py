@@ -1,15 +1,11 @@
 """
-Simple configuration for Sprint 1.
+Configuration loader — works for both local dev and Streamlit Cloud.
 
-WHY THIS FILE EXISTS:
-- We need to load the HuggingFace API token from .env file
-- Better than hardcoding the token in our code
-- Keeps secrets out of Git
-
-HOW IT WORKS:
-1. python-dotenv reads .env file
-2. os.getenv() gets the API token
-3. We export it so other files can import it
+Token resolution order:
+  1. .env file  (local development)
+  2. st.secrets (Streamlit Cloud)
+  3. System environment variable
+  4. None       (no AI — rule-based fallback activates automatically)
 
 USAGE:
     from src.utils.config import HUGGINGFACE_API_TOKEN
@@ -19,18 +15,30 @@ import os
 
 from dotenv import load_dotenv
 
-# Load .env file (looks for .env in project root)
-# override=True ensures .env values always win over stale system env vars
-load_dotenv(override=True)
+# Load .env file if present (local dev). Silently ignored on Streamlit Cloud.
+load_dotenv()
 
-# Get API token from environment
-HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN")
+# 1. Try .env / system env first
+HUGGINGFACE_API_TOKEN: str | None = os.getenv("HUGGINGFACE_API_TOKEN")
 
-# Check if token is set
+# 2. Fall back to st.secrets (Streamlit Cloud deployment)
 if not HUGGINGFACE_API_TOKEN:
-    raise ValueError(
-        "HUGGINGFACE_API_TOKEN not found! "
-        "Please create a .env file with your HuggingFace token. "
-        "Get one free at: https://huggingface.co/settings/tokens "
-        "See .env.example for template."
+    try:
+        import streamlit as st
+
+        HUGGINGFACE_API_TOKEN = st.secrets.get("HUGGINGFACE_API_TOKEN")
+    except Exception:
+        # streamlit not installed, or secrets not configured — that's fine
+        pass
+
+# Token is None → scanner_agent will catch it at runtime and fall back to
+# rule-based analysis. We never raise here so the app always starts up.
+if not HUGGINGFACE_API_TOKEN:
+    import warnings
+
+    warnings.warn(
+        "HUGGINGFACE_API_TOKEN not set. AI scanner disabled — "
+        "rule-based fallback will be used automatically. "
+        "Add the token to .env (local) or Streamlit Cloud secrets to enable AI.",
+        stacklevel=2,
     )
