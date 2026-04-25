@@ -34,11 +34,13 @@ class MarketScanner:
     technical indicators and explain opportunities.
     """
 
-    def __init__(self):
+    def __init__(self, token: str | None = None):
         """Initialize the scanner with data collector and AI model."""
         self.collector = MarketDataCollector()
         self.indicators = SimpleTechnicalIndicators()
 
+        # Resolve token: prefer explicitly passed token, then fall back to config
+        api_token = token or HUGGINGFACE_API_TOKEN
         # Initialize HuggingFace InferenceClient (FREE!)
         # Uses the new router.huggingface.co API via chat_completion()
         # Try multiple models in case one is unavailable
@@ -52,22 +54,25 @@ class MarketScanner:
         self.llm_model = None
         self.llm_client = None
 
-        for repo_id, model_name in models_to_try:
-            try:
-                print(f"⏳ Trying to load {model_name}...")
-                client = InferenceClient(model=repo_id, token=HUGGINGFACE_API_TOKEN, timeout=30)
-                # Quick connectivity test
-                test_resp = client.chat_completion(
-                    messages=[{"role": "user", "content": "Reply with just: OK"}], max_tokens=5
-                )
-                _ = test_resp.choices[0].message.content
-                self.llm_client = client
-                self.llm_model = model_name
-                print(f"✅ Successfully connected to FREE model: {model_name}")
-                break
-            except Exception as e:
-                print(f"   {model_name} unavailable: {str(e)[:120]}")
-                continue
+        if not api_token:
+            print("⚠️  No HuggingFace token — AI scanner disabled, rule-based fallback active.")
+        else:
+            for repo_id, model_name in models_to_try:
+                try:
+                    print(f"⏳ Trying to load {model_name}...")
+                    client = InferenceClient(model=repo_id, token=api_token, timeout=30)
+                    # Quick connectivity test
+                    test_resp = client.chat_completion(
+                        messages=[{"role": "user", "content": "Reply with just: OK"}], max_tokens=5
+                    )
+                    _ = test_resp.choices[0].message.content
+                    self.llm_client = client
+                    self.llm_model = model_name
+                    print(f"✅ Successfully connected to FREE model: {model_name}")
+                    break
+                except Exception as e:
+                    print(f"   {model_name} unavailable: {str(e)[:120]}")
+                    continue
 
         if not self.llm_client:
             print("⚠️  No AI model available — will use rule-based fallback for all scans.")

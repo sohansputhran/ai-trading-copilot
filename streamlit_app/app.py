@@ -362,14 +362,45 @@ st.set_page_config(
 )
 
 st.title("AI Trading Scanner")
-if SCANNER_TYPE == "AI":
-    st.markdown("*Powered by free HuggingFace AI*")
+_active_token = st.session_state.get("hf_token", "")
+if _active_token:
+    st.markdown("*Powered by free HuggingFace AI* 🤖")
 else:
-    st.markdown("*Using rule-based analysis (no AI needed)*")
+    st.markdown("*Using rule-based analysis — add HuggingFace token in sidebar to enable AI* 🔧")
 
 # Sidebar
 
 st.sidebar.header("Scanner Settings")
+
+# ── HuggingFace Token Input ──────────────────────────────────
+from src.utils.config import HUGGINGFACE_API_TOKEN as _CONFIG_TOKEN
+
+# Seed session state from config (env / st.secrets) once per session
+if "hf_token" not in st.session_state:
+    st.session_state.hf_token = _CONFIG_TOKEN or ""
+
+with st.sidebar.expander("🔑 HuggingFace API Token", expanded=not st.session_state.hf_token):
+    st.markdown(
+        "Enter your **free** HuggingFace token to enable AI analysis. "
+        "[Get one here](https://huggingface.co/settings/tokens)."
+    )
+    token_input = st.text_input(
+        "Token",
+        value=st.session_state.hf_token,
+        type="password",
+        placeholder="hf_…",
+        label_visibility="collapsed",
+        key="hf_token_input",
+    )
+    if token_input != st.session_state.hf_token:
+        st.session_state.hf_token = token_input
+        st.rerun()  # Refresh so the subtitle updates immediately
+
+    if st.session_state.hf_token:
+        st.success("✅ Token saved for this session")
+    else:
+        st.info("ℹ️ No token — rule-based scanner will be used")
+# ─────────────────────────────────────────────────────────────
 
 # Risk sidebar — always visible
 render_risk_sidebar(
@@ -494,8 +525,9 @@ if scan_button:
         progress_bar = st.progress(0)
         status_text = st.empty()
 
-        # Initialize scanner
-        scanner = MarketScanner()
+        # Initialize scanner — pass user-supplied token from sidebar
+        _token = st.session_state.get("hf_token") or None
+        scanner = MarketScanner(token=_token) if SCANNER_TYPE == "AI" else MarketScanner()
 
         # Initialize multi-agent orchestrator (reuses scanner's LLM client)
         orchestrator = None
