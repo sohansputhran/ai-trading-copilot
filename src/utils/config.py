@@ -42,4 +42,3 @@ if not HUGGINGFACE_API_TOKEN:
         "Add the token to .env (local) or Streamlit Cloud secrets to enable AI.",
         stacklevel=2,
     )
-
