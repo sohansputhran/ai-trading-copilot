@@ -14,7 +14,7 @@ RULES:
 """
 
 from src.data_pipeline.collector import MarketDataCollector
-from src.data_pipeline.indicators_simple import SimpleTechnicalIndicators
+from src.data_pipeline.indicators import SimpleTechnicalIndicators
 
 
 class RuleBasedScanner:
