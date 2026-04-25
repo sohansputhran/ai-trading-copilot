@@ -1,11 +1,21 @@
+# ============================================================
+# Production requirements — Streamlit Cloud deployment
+# ============================================================
+# Keep this file LEAN. Streamlit Cloud installs every package
+# listed here on every deploy. Heavy packages (torch, 2GB+)
+# will cause the installer to time out and fail.
+#
+# For local development with torch/transformers, use:
+#   pip install -r requirements-dev.txt
+# ============================================================
+
 # Core agent framework
 langgraph>=0.2.0
 langchain>=0.3.0
 langchain-community>=0.3.0
 
-# LLM (HuggingFace)
-transformers>=4.40.0
-torch>=2.0.0
+# HuggingFace Inference API (HTTP calls only — no local models)
+# DO NOT add torch or transformers here; they're 2GB+ and break cloud builds.
 huggingface-hub>=0.22.0
 
 # Data pipeline
@@ -13,26 +23,12 @@ yfinance>=0.2.36
 pandas>=2.0.0
 numpy>=1.26.0
 
-# Web framework & UI
+# UI
 streamlit>=1.32.0
 plotly>=5.20.0
-fastapi>=0.110.0
-uvicorn>=0.29.0
 
-# Logging & observability
+# Logging & utilities
 structlog>=24.1.0
-
-# Testing
-pytest>=8.0.0
-pytest-cov>=5.0.0
-
-# Code quality
-black>=24.0.0
-ruff>=0.4.0
-mypy>=1.9.0
-
-# Utilities
 python-dotenv>=1.0.0
 pydantic>=2.6.0
-tenacity>=8.2.0          # Retry logic for API calls
-psycopg2-binary==2.9.9
+tenacity>=8.2.0

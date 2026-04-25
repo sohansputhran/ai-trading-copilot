@@ -69,3 +69,8 @@ venv.bak/
 
 # Ruff stuff:
 .ruff_cache/
+
+# Streamlit stuff:
+.streamlit/secrets.toml
+.env
+*.db
