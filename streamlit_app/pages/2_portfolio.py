@@ -292,7 +292,7 @@ st.set_page_config(
 
 if IS_CLOUD_DEPLOYMENT:
     st.info(
-        "📊 **Demo Mode** — You're viewing sample portfolio data. "
+        "📊 **Demo Mode** - You're viewing sample portfolio data. "
         "In a real deployment with database support, this page shows live positions and P&L."
     )
 
@@ -829,6 +829,6 @@ with action_col3:
 # Footer
 st.divider()
 if IS_CLOUD_DEPLOYMENT:
-    st.caption("💡 **Demo Mode** — This is sample data. Deploy locally with database support for real portfolio tracking.")
+    st.caption("💡 **Demo Mode** - This is sample data. Deploy locally with database support for real portfolio tracking.")
 else:
     st.caption("💡 **Tip:** Prices automatically update when you navigate to this page. Use the sidebar Refresh button for manual updates.")

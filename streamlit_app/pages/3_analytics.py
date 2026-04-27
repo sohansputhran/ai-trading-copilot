@@ -173,7 +173,7 @@ st.title("📊 Trade Analytics")
 
 if IS_CLOUD_DEPLOYMENT:
     st.info(
-        "📊 **Demo Mode** — You're viewing sample analytics data. "
+        "📊 **Demo Mode** - You're viewing sample analytics data. "
         "In a real deployment with database support, this page shows actual trade performance."
     )
     st.caption("Performance metrics derived from dummy paper trades.")
@@ -282,40 +282,121 @@ else:
 
 st.subheader("Performance Summary")
 
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     total_pnl = metrics["total_pnl"]
-    st.metric(
-        "Total P&L",
-        f"₹{total_pnl:,.0f}",
-        delta=f"{'▲' if total_pnl >= 0 else '▼'} {abs(total_pnl):,.0f}",
-        delta_color="normal",
+    pnl_color = "#00c853" if total_pnl >= 0 else "#ff1744"  # Green for profit, red for loss
+    delta_symbol = "▲" if total_pnl >= 0 else "▼"
+    
+    st.markdown(
+        f"""
+        <div style="padding: 10px 0;">
+            <p style="font-size: 14px; color: #808495; margin: 0 0 8px 0; font-weight: bold;">Total P&L</p>
+            <p style="color: {pnl_color}; font-size: 32px; font-weight: bold; margin: 0; line-height: 1;">
+                ₹{total_pnl:,.0f}
+            </p>
+            <p style="font-size: 12px; color: #808495; margin: 8px 0 0 0;">
+                {metrics['total_trades']} trades
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
-    st.metric("Total Trades", metrics["total_trades"])
 
 with col2:
     wr = metrics["win_rate"]
-    st.metric("Win Rate", f"{wr:.1%}" if wr is not None else "—")
-    st.metric("Winners / Losers", f"{metrics['winners']} / {metrics['losers']}")
+    st.markdown(
+        f"""
+        <div style="padding: 10px 0;">
+            <p style="font-size: 14px; color: #808495; margin: 0 0 8px 0; font-weight: bold;">Win Rate</p>
+            <p style="color: #262730; font-size: 32px; font-weight: bold; margin: 0; line-height: 1;">
+                {f"{wr:.1%}" if wr is not None else "—"}
+            </p>
+            <p style="font-size: 12px; color: #808495; margin: 8px 0 0 0;">
+                {metrics['winners']} wins / {metrics['losers']} losses
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 with col3:
     pf = metrics["profit_factor"]
-    st.metric("Profit Factor", f"{pf:.2f}" if pf is not None else "—")
-    exp = metrics["expectancy"]
-    st.metric("Expectancy", f"₹{exp:,.0f}" if exp is not None else "—")
+    if pf is not None:
+        # Color based on profit factor quality
+        if pf > 3:
+            pf_label = "🔥 Excellent"
+            pf_color = "#00c853"  # Green - Excellent
+        elif pf > 2:
+            pf_label = "✓ Very Good"
+            pf_color = "#4caf50"  # Light green - Very Good
+        elif pf > 1.5:
+            pf_label = "✓ Good"
+            pf_color = "#66bb6a"  # Lighter green - Good
+        elif pf > 1.0:
+            pf_label = "⚠️ Needs Work"
+            pf_color = "#ff9800"  # Orange - Needs work
+        else:
+            pf_label = "❌ Poor"
+            pf_color = "#ff1744"  # Red - Poor (losing system)
+        
+        st.markdown(
+            f"""
+            <div style="padding: 10px 0;">
+                <p style="font-size: 14px; color: #808495; margin: 0 0 8px 0; font-weight: bold;">Profit Factor</p>
+                <p style="color: {pf_color}; font-size: 32px; font-weight: bold; margin: 0; line-height: 1;">
+                    {pf:.2f}
+                </p>
+                <p style="font-size: 12px; color: #808495; margin: 8px 0 0 0;">
+                    {pf_label}
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f"""
+            <div style="padding: 10px 0;">
+                <p style="font-size: 14px; color: #808495; margin: 0 0 8px 0; font-weight: bold;">Profit Factor</p>
+                <p style="color: #262730; font-size: 32px; font-weight: bold; margin: 0; line-height: 1;">—</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 with col4:
-    sharpe = metrics["sharpe_ratio"]
-    st.metric("Sharpe Ratio", f"{sharpe:.2f}" if sharpe is not None else "—")
-    sortino = metrics["sortino_ratio"]
-    st.metric("Sortino Ratio", f"{sortino:.2f}" if sortino is not None else "—")
-
-with col5:
     dd = metrics["max_drawdown"]
-    st.metric("Max Drawdown", f"₹{dd:,.0f}" if dd is not None else "—")
-    avg_r = metrics["avg_r_multiple"]
-    st.metric("Avg R-Multiple", f"{avg_r:.2f}R" if avg_r is not None else "—")
+    if dd is not None:
+        # Calculate as percentage of starting capital (assumes ₹500k starting)
+        # For real data, this should use actual starting capital
+        dd_pct = abs((dd / 500000) * 100)
+        
+        st.markdown(
+            f"""
+            <div style="padding: 10px 0;">
+                <p style="font-size: 14px; color: #808495; margin: 0 0 8px 0; font-weight: bold;">Max Drawdown</p>
+                <p style="color: #262730; font-size: 32px; font-weight: bold; margin: 0; line-height: 1;">
+                    ₹{dd:,.0f}
+                </p>
+                <p style="font-size: 12px; color: #808495; margin: 8px 0 0 0;">
+                    {dd_pct:.1f}% of capital
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f"""
+            <div style="padding: 10px 0;">
+                <p style="font-size: 14px; color: #808495; margin: 0 0 8px 0; font-weight: bold;">Max Drawdown</p>
+                <p style="color: #262730; font-size: 32px; font-weight: bold; margin: 0; line-height: 1;">—</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 st.divider()
 
@@ -449,7 +530,7 @@ st.divider()
 
 if IS_CLOUD_DEPLOYMENT:
     st.caption(
-        "💡 **Demo Mode** — This is sample data to demonstrate analytics capabilities. "
+        "💡 **Demo Mode** - This is sample data to demonstrate analytics capabilities. "
         "Deploy locally with database support to track real trade performance."
     )
 else:
