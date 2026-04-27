@@ -432,13 +432,15 @@ delta_symbol = "▲" if combined_pnl >= 0 else "▼"
 st.sidebar.markdown(
     f"""
     <div style="padding: 10px 0;">
-        <p style="font-size: 14px; font-weight: bold; margin: 0 0 5px 0;">Portfolio Value</p>
-        <p style="color: {value_color}; font-size: 28px; font-weight: bold; margin: 0;">
-            ₹{total_portfolio_value:,.0f}
-        </p>
-        <p style="color: {value_color}; font-size: 14px; margin: 5px 0 0 0;">
-            {delta_symbol} {combined_pnl_pct:+.2f}%
-        </p>
+        <p style="font-size: 14px; color: #888; font-weight: bold; margin: 0 0 5px 0;">Portfolio Value</p>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+            <p style="color: {value_color}; font-size: 28px; font-weight: bold; margin: 0;">
+                ₹{total_portfolio_value:,.0f}
+            </p>
+            <p style="color: {value_color}; font-size: 14px; margin: 0;">
+                {delta_symbol} {combined_pnl_pct:+.2f}%
+            </p>
+        </div>
     </div>
     """,
     unsafe_allow_html=True
@@ -447,10 +449,12 @@ st.sidebar.markdown(
 st.sidebar.markdown(
     f"""
     <div style="padding: 10px 0;">
-        <p style="font-size: 14px; font-weight: bold; margin: 0 0 5px 0;">Available Capital</p>
-        <p style="font-size: 28px; font-weight: bold; margin: 0;">
-            ₹{snapshot.available_capital:,.0f}
-        </p>
+        <p style="font-size: 14px; color: #888; font-weight: bold; margin: 0 0 5px 0;">Available Capital</p>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+            <p style="font-size: 28px; font-weight: bold; margin: 0;">
+                ₹{snapshot.available_capital:,.0f}
+            </p>
+        </div>
     </div>
     """,
     unsafe_allow_html=True
@@ -530,7 +534,7 @@ with metric_col1:
         "Portfolio Value",
         f"₹{total_portfolio_value:,.0f}",
         help="Total portfolio value including open positions"
-    )
+    )    
 
 with metric_col2:
     st.metric(
@@ -578,6 +582,70 @@ for order in open_positions:
 total_deployed = sum(p["position_value"] for p in position_data)
 total_pnl_pct = (total_pnl / total_deployed * 100) if total_deployed > 0 else 0.0
 
+# Visualizations
+viz_col1, viz_col2 = st.columns(2)
+
+with viz_col1:
+    st.markdown("### Portfolio Allocation")
+    
+    # Add cash to allocation
+    allocation_data = [{"Category": p["symbol"], "Value": p["current_value"]} for p in position_data]
+    allocation_data.append({"Category": "Cash", "Value": snapshot.available_capital})
+    
+    allocation_df = pd.DataFrame(allocation_data)
+    
+    fig_allocation = px.pie(
+        allocation_df,
+        values="Value",
+        names="Category",
+        hole=0.4,
+        color_discrete_sequence=px.colors.qualitative.Set3
+    )
+    fig_allocation.update_traces(
+        textposition='inside',
+        textinfo='percent+label',
+        hovertemplate='<b>%{label}</b><br>₹%{value:,.0f}<br>%{percent}<extra></extra>'
+    )
+    fig_allocation.update_layout(
+        showlegend=True,
+        height=400,
+        margin=dict(t=0, b=0, l=0, r=0)
+    )
+    st.plotly_chart(fig_allocation, width='stretch')
+
+with viz_col2:
+    st.markdown("### Portfolio Value Over Time")
+    
+    # Use the portfolio_timeline data (from dummy data or real data)
+    timeline_data = pd.DataFrame(portfolio_timeline)
+    
+    fig_timeline = px.line(
+        timeline_data,
+        x="Date",
+        y="Portfolio Value (₹)",
+        markers=True
+    )
+    fig_timeline.update_traces(
+        line_color='#1f77b4',
+        marker=dict(size=8)
+    )
+    fig_timeline.update_layout(
+        height=400,
+        margin=dict(t=0, b=0, l=20, r=20),
+        hovermode='x unified',
+        xaxis=dict(
+            title="Date",
+            tickformat="%b %d" if len(timeline_data) > 1 else "%b %d, %Y"
+        ),
+        yaxis=dict(
+            title="Portfolio Value (₹)",
+            tickformat="₹,.0f"
+        )
+    )
+    st.plotly_chart(fig_timeline, width='stretch')
+
+st.divider()
+
 # P&L Summary
 st.markdown("## 💰 Performance Summary")
 
@@ -614,70 +682,6 @@ with pnl_col3:
         prefix="₹",
         help_text="Average profit/loss per open position"
     )
-
-st.divider()
-
-# Visualizations
-viz_col1, viz_col2 = st.columns(2)
-
-with viz_col1:
-    st.markdown("### Portfolio Allocation")
-    
-    # Add cash to allocation
-    allocation_data = [{"Category": p["symbol"], "Value": p["current_value"]} for p in position_data]
-    allocation_data.append({"Category": "Cash", "Value": snapshot.available_capital})
-    
-    allocation_df = pd.DataFrame(allocation_data)
-    
-    fig_allocation = px.pie(
-        allocation_df,
-        values="Value",
-        names="Category",
-        hole=0.4,
-        color_discrete_sequence=px.colors.qualitative.Set3
-    )
-    fig_allocation.update_traces(
-        textposition='inside',
-        textinfo='percent+label',
-        hovertemplate='<b>%{label}</b><br>₹%{value:,.0f}<br>%{percent}<extra></extra>'
-    )
-    fig_allocation.update_layout(
-        showlegend=True,
-        height=400,
-        margin=dict(t=0, b=0, l=0, r=0)
-    )
-    st.plotly_chart(fig_allocation, use_container_width=True)
-
-with viz_col2:
-    st.markdown("### Portfolio Value Over Time")
-    
-    # Use the portfolio_timeline data (from dummy data or real data)
-    timeline_data = pd.DataFrame(portfolio_timeline)
-    
-    fig_timeline = px.line(
-        timeline_data,
-        x="Date",
-        y="Portfolio Value (₹)",
-        markers=True
-    )
-    fig_timeline.update_traces(
-        line_color='#1f77b4',
-        marker=dict(size=8)
-    )
-    fig_timeline.update_layout(
-        height=400,
-        margin=dict(t=0, b=0, l=20, r=20),
-        hovermode='x unified',
-        xaxis=dict(
-            title="Date",
-            tickformat="%b %d" if len(timeline_data) > 1 else "%b %d, %Y"
-        ),
-        yaxis=dict(
-            title="Portfolio Value (₹)",
-            tickformat="₹,.0f"
-        )
-    )
-    st.plotly_chart(fig_timeline, use_container_width=True)
 
 st.divider()
 
