@@ -78,7 +78,7 @@ def generate_dummy_data():
             take_profit=2550.00,
             strategy="momentum_breakout",
             confidence=0.78,
-            capital_at_risk=7575.0,
+            capital_at_risk=757.50,  # (2450.50 - 2400.00) * 15 = 757.50
             agent_reasoning="Strong momentum breakout above 2440 resistance. Volume spike 2.3x average. RSI at 62 (not overbought). MACD bullish crossover. Target: 2550 (R:R = 1.98x)",
             timestamp=(datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
         ),
@@ -92,7 +92,7 @@ def generate_dummy_data():
             take_profit=3800.00,
             strategy="technical_analysis",
             confidence=0.72,
-            capital_at_risk=15000.0,
+            capital_at_risk=1500.00,  # (3680.00 - 3620.00) * 25 = 1500.00
             agent_reasoning="Bouncing off 50-day EMA support at 3670. Bullish engulfing pattern on daily. Volume confirmation present. Stochastic oversold reversal. Conservative R:R = 2.0x",
             timestamp=(datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d %H:%M:%S")
         ),
@@ -106,7 +106,7 @@ def generate_dummy_data():
             take_profit=1710.00,
             strategy="breakout_strategy",
             confidence=0.85,
-            capital_at_risk=4200.0,
+            capital_at_risk=420.00,  # (1625.00 - 1590.00) * 12 = 420.00
             agent_reasoning="Breaking above multi-week consolidation range. ADX strengthening (28). Volume 1.8x average. Price action clean. Measured move target: 1710. Strong institutional buying.",
             timestamp=(datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
         ),
@@ -120,7 +120,7 @@ def generate_dummy_data():
             take_profit=1510.00,
             strategy="momentum_breakout",
             confidence=0.68,
-            capital_at_risk=7500.0,
+            capital_at_risk=750.00,  # (1455.00 - 1430.00) * 30 = 750.00
             agent_reasoning="Momentum building after earnings beat. Price gapping above resistance. MACD positive. Risk: sector rotation. Stop below swing low. Target previous high.",
             timestamp=(datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
         ),
@@ -148,14 +148,66 @@ def generate_dummy_data():
     
     @dataclass
     class DummySnapshot:
-        portfolio_value: float = 500000
-        available_capital: float = 345000
-        deployed_capital: float = 155000
-        open_positions: int = 4
-        risk_per_trade: float = 0.015
-        max_position_size: float = 0.05
+        portfolio_value: float
+        available_capital: float
+        deployed_capital: float
+        total_capital_at_risk: float
+        open_positions: int
+        risk_per_trade: float
+        max_position_size: float
     
-    return dummy_orders, current_prices, closed_trades, DummySnapshot()
+    # Calculate total capital at risk from all open positions
+    total_capital_at_risk = sum(order.capital_at_risk for order in dummy_orders)
+    
+    # Create snapshot instance with calculated values
+    snapshot = DummySnapshot(
+        portfolio_value=500000,
+        available_capital=345000,
+        deployed_capital=155000,
+        total_capital_at_risk=total_capital_at_risk,
+        open_positions=4,
+        risk_per_trade=0.015,
+        max_position_size=0.05
+    )
+    
+    # Generate portfolio value timeline (last 30 days)
+    portfolio_timeline = []
+    base_value = 500000
+    current_date = datetime.now()
+    
+    for days_ago in range(30, -1, -1):
+        date = current_date - timedelta(days=days_ago)
+        
+        # Create realistic portfolio growth with some volatility
+        # Day 0 (30 days ago): 500,000
+        # Day 30 (today): 512,762 (+2.55%)
+        # With ups and downs in between
+        
+        if days_ago >= 25:
+            # First week: slight growth
+            value = base_value + (days_ago - 30) * 400
+        elif days_ago >= 20:
+            # Week 2: small dip
+            value = base_value - 2000 + (25 - days_ago) * 300
+        elif days_ago >= 15:
+            # Week 3: recovery and growth
+            value = base_value - 500 + (20 - days_ago) * 800
+        elif days_ago >= 10:
+            # Week 4: strong performance
+            value = base_value + 3500 + (15 - days_ago) * 600
+        elif days_ago >= 5:
+            # Week 5: consolidation
+            value = base_value + 6500 + (10 - days_ago) * 400
+        else:
+            # Last 5 days: final push to current value
+            value = base_value + 8500 + (5 - days_ago) * 850
+        
+        portfolio_timeline.append({
+            "Date": date,
+            "Portfolio Value (₹)": round(value, 2)
+        })
+    
+    return dummy_orders, current_prices, closed_trades, snapshot, portfolio_timeline
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -252,7 +304,7 @@ PORTFOLIO_VALUE = 500000
 
 if IS_CLOUD_DEPLOYMENT:
     # === DUMMY DATA MODE ===
-    open_positions, current_prices, closed_trades, snapshot = generate_dummy_data()
+    open_positions, current_prices, closed_trades, snapshot, portfolio_timeline = generate_dummy_data()
     total_realized_pnl = sum(trade.pnl for trade in closed_trades)
     
     # Calculate unrealized P&L
@@ -321,6 +373,15 @@ else:
         current_prices[symbol] = current_price
         pnl = (current_price - entry_price) * quantity
         total_unrealized_pnl += pnl
+    
+    # For real data mode, create simple timeline with current value
+    # TODO: Expand this with historical data from database
+    portfolio_timeline = [
+        {
+            "Date": datetime.now(),
+            "Portfolio Value (₹)": snapshot.portfolio_value + total_realized_pnl + total_unrealized_pnl
+        }
+    ]
 
 # ============================================================================
 # CALCULATE INSIGHTS
@@ -360,17 +421,39 @@ st.sidebar.markdown("### 📊 Quick Stats")
 
 # Calculate combined P&L for delta
 combined_pnl = total_realized_pnl + total_unrealized_pnl
+combined_pnl_pct = (combined_pnl / snapshot.portfolio_value) * 100 if snapshot.portfolio_value > 0 else 0.0
 
 total_portfolio_value = snapshot.portfolio_value + total_realized_pnl + total_unrealized_pnl
-st.sidebar.metric(
-    "Portfolio Value",
-    f"₹{total_portfolio_value:,.0f}",
-    delta=f"₹{combined_pnl:+,.0f}" if combined_pnl != 0 else None
+
+# Color-coded portfolio value metric
+value_color = "#00c853" if combined_pnl >= 0 else "#ff1744"  # Green for profit, red for loss
+delta_symbol = "▲" if combined_pnl >= 0 else "▼"
+
+st.sidebar.markdown(
+    f"""
+    <div style="padding: 10px 0;">
+        <p style="font-size: 14px; font-weight: bold; margin: 0 0 5px 0;">Portfolio Value</p>
+        <p style="color: {value_color}; font-size: 28px; font-weight: bold; margin: 0;">
+            ₹{total_portfolio_value:,.0f}
+        </p>
+        <p style="color: {value_color}; font-size: 14px; margin: 5px 0 0 0;">
+            {delta_symbol} {combined_pnl_pct:+.2f}%
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
-st.sidebar.metric(
-    "Available Capital",
-    f"₹{snapshot.available_capital:,.0f}"
+st.sidebar.markdown(
+    f"""
+    <div style="padding: 10px 0;">
+        <p style="font-size: 14px; font-weight: bold; margin: 0 0 5px 0;">Available Capital</p>
+        <p style="font-size: 28px; font-weight: bold; margin: 0;">
+            ₹{snapshot.available_capital:,.0f}
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
 st.sidebar.markdown("---")
@@ -440,29 +523,29 @@ if not open_positions:
 # Portfolio metrics
 st.markdown("## 📊 Portfolio Metrics")
 
-metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+metric_col1, metric_col2, metric_col3 = st.columns(3)
 
 with metric_col1:
-    st.metric("Total Value", f"₹{total_portfolio_value:,.0f}")
-    st.metric("Available Capital", f"₹{snapshot.available_capital:,.0f}")
+    st.metric(
+        "Portfolio Value",
+        f"₹{total_portfolio_value:,.0f}",
+        help="Total portfolio value including open positions"
+    )
 
 with metric_col2:
-    deployed = snapshot.deployed_capital if hasattr(snapshot, 'deployed_capital') else sum(
-        (order.fill_price if hasattr(order, 'fill_price') else order.requested_price) * order.shares 
-        for order in open_positions
+    st.metric(
+        "Available Capital",
+        f"₹{snapshot.available_capital:,.0f}",
+        help="Capital available for new positions"
     )
-    st.metric("Deployed Capital", f"₹{deployed:,.0f}")
-    deployment_pct = (deployed / snapshot.portfolio_value) * 100
-    st.metric("Deployment %", f"{deployment_pct:.1f}%")
 
 with metric_col3:
-    st.metric("Unrealized P&L", f"₹{total_unrealized_pnl:+,.0f}")
-    st.metric("Realized P&L", f"₹{total_realized_pnl:+,.0f}")
-
-with metric_col4:
-    st.metric("Combined P&L", f"₹{combined_pnl:+,.0f}")
-    combined_pct = (combined_pnl / PORTFOLIO_VALUE) * 100
-    st.metric("Return %", f"{combined_pct:+.2f}%")
+    total_risk = snapshot.total_capital_at_risk if hasattr(snapshot, 'total_capital_at_risk') else 0.0
+    st.metric(
+        "Total Risk",
+        f"₹{total_risk:,.0f}",
+        help="Total capital at risk across all positions"
+    )
 
 st.divider()
 
@@ -535,49 +618,66 @@ with pnl_col3:
 st.divider()
 
 # Visualizations
-st.markdown("## 📈 Portfolio Visualizations")
-
 viz_col1, viz_col2 = st.columns(2)
 
 with viz_col1:
-    # Position allocation pie chart
-    allocation_df = pd.DataFrame([
-        {"Symbol": p["symbol"], "Value": p["current_value"]} 
-        for p in position_data
-    ])
+    st.markdown("### Portfolio Allocation")
+    
+    # Add cash to allocation
+    allocation_data = [{"Category": p["symbol"], "Value": p["current_value"]} for p in position_data]
+    allocation_data.append({"Category": "Cash", "Value": snapshot.available_capital})
+    
+    allocation_df = pd.DataFrame(allocation_data)
     
     fig_allocation = px.pie(
         allocation_df,
         values="Value",
-        names="Symbol",
-        title="Portfolio Allocation by Stock",
+        names="Category",
         hole=0.4,
         color_discrete_sequence=px.colors.qualitative.Set3
     )
-    fig_allocation.update_traces(textposition='inside', textinfo='percent+label')
-    st.plotly_chart(fig_allocation, width="stretch")
+    fig_allocation.update_traces(
+        textposition='inside',
+        textinfo='percent+label',
+        hovertemplate='<b>%{label}</b><br>₹%{value:,.0f}<br>%{percent}<extra></extra>'
+    )
+    fig_allocation.update_layout(
+        showlegend=True,
+        height=400,
+        margin=dict(t=0, b=0, l=0, r=0)
+    )
+    st.plotly_chart(fig_allocation, use_container_width=True)
 
 with viz_col2:
-    # P&L by position with proper color coding
-    pnl_df = pd.DataFrame([
-        {
-            "Symbol": p["symbol"],
-            "P&L": p["pnl"],
-            "Color": "Profit" if p["pnl"] >= 0 else "Loss"
-        }
-        for p in position_data
-    ])
+    st.markdown("### Portfolio Value Over Time")
     
-    fig_pnl = px.bar(
-        pnl_df,
-        x="Symbol",
-        y="P&L",
-        color="Color",
-        title="P&L by Position",
-        color_discrete_map={"Profit": "#00c853", "Loss": "#ff1744"}
+    # Use the portfolio_timeline data (from dummy data or real data)
+    timeline_data = pd.DataFrame(portfolio_timeline)
+    
+    fig_timeline = px.line(
+        timeline_data,
+        x="Date",
+        y="Portfolio Value (₹)",
+        markers=True
     )
-    fig_pnl.update_layout(showlegend=False)
-    st.plotly_chart(fig_pnl, width="stretch")
+    fig_timeline.update_traces(
+        line_color='#1f77b4',
+        marker=dict(size=8)
+    )
+    fig_timeline.update_layout(
+        height=400,
+        margin=dict(t=0, b=0, l=20, r=20),
+        hovermode='x unified',
+        xaxis=dict(
+            title="Date",
+            tickformat="%b %d" if len(timeline_data) > 1 else "%b %d, %Y"
+        ),
+        yaxis=dict(
+            title="Portfolio Value (₹)",
+            tickformat="₹,.0f"
+        )
+    )
+    st.plotly_chart(fig_timeline, use_container_width=True)
 
 st.divider()
 
