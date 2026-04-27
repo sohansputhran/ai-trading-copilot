@@ -277,6 +277,92 @@ else:
     breakdown = PerformanceEngine.by_strategy(trades)
 
 # ============================================================================
+# SIDEBAR - QUICK STATS & ACTIONS
+# ============================================================================
+
+st.sidebar.markdown("### 📊 Quick Stats")
+
+# Portfolio Value (based on analytics data)
+total_pnl = metrics["total_pnl"]
+starting_capital = 500000  # Assume ₹5L starting capital
+current_portfolio_value = starting_capital + total_pnl
+pnl_pct = (total_pnl / starting_capital) * 100 if starting_capital > 0 else 0.0
+
+value_color = "#00c853" if total_pnl >= 0 else "#ff1744"
+delta_symbol = "▲" if total_pnl >= 0 else "▼"
+
+st.sidebar.markdown(
+    f"""
+    <div style="padding: 10px 0;">
+        <p style="font-weight: bold; font-size: 14px; color: #888; margin: 0 0 5px 0;">Portfolio Value</p>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+            <p style="color: {value_color}; font-size: 28px; font-weight: bold; margin: 0;">
+                ₹{current_portfolio_value:,.0f}
+            </p>
+            <p style="color: {value_color}; font-size: 14px; margin: 0;">
+                {delta_symbol} {pnl_pct:+.2f}%
+            </p>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.sidebar.markdown(
+    f"""
+    <div style="padding: 10px 0;">
+        <p style="font-weight: bold; font-size: 14px; color: #888; margin: 0 0 5px 0;">Total Trades</p>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+            <p style="font-size: 28px; font-weight: bold; margin: 0;">
+                {metrics['total_trades']}
+            </p>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.sidebar.markdown("---")
+
+# Quick Actions
+st.sidebar.markdown("### 🚀 Quick Actions")
+
+if st.sidebar.button("🔍 Back to Scanner", use_container_width=True):
+    st.switch_page("app.py")
+
+if st.sidebar.button("💼 View Portfolio", use_container_width=True):
+    st.switch_page("pages/2_portfolio.py")
+
+if not IS_CLOUD_DEPLOYMENT:
+    if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
+        st.rerun()
+
+st.sidebar.markdown("---")
+
+# Trading Insights
+st.sidebar.markdown("### 💡 Trading Insights")
+
+if metrics['win_rate'] is not None:
+    wr = metrics['win_rate']
+    if wr >= 0.7:
+        st.sidebar.success(f"🎯 **Strong Win Rate**: {wr:.1%}")
+    elif wr >= 0.5:
+        st.sidebar.info(f"✓ **Decent Win Rate**: {wr:.1%}")
+    else:
+        st.sidebar.warning(f"⚠️ **Low Win Rate**: {wr:.1%}")
+
+if metrics['profit_factor'] is not None:
+    pf = metrics['profit_factor']
+    if pf > 3:
+        st.sidebar.success(f"🔥 **Excellent PF**: {pf:.2f}")
+    elif pf > 2:
+        st.sidebar.success(f"✓ **Very Good PF**: {pf:.2f}")
+    elif pf > 1.5:
+        st.sidebar.info(f"✓ **Good PF**: {pf:.2f}")
+    else:
+        st.sidebar.warning(f"⚠️ **Needs Work**: PF {pf:.2f}")
+
+# ============================================================================
 # TOP-LEVEL METRICS
 # ============================================================================
 
