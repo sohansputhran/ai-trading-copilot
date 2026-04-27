@@ -86,7 +86,7 @@ def render_agent_card(analysis, col):
 
 def render_multi_agent_tab(multi_result: dict):
     if multi_result is None:
-        st.info("Multi-agent analysis unavailable — LangGraph not installed.")
+        st.info("Multi-agent analysis unavailable - LangGraph not installed.")
         return
     final_signal     = multi_result.get("final_signal")
     final_confidence = multi_result.get("final_confidence", 0)
@@ -96,11 +96,11 @@ def render_multi_agent_tab(multi_result: dict):
     signal_str = final_signal.value if hasattr(final_signal, "value") else str(final_signal)
 
     if signal_str == "BUY":
-        st.success(f"### {signal_badge(signal_str)} — {final_confidence:.0%} confidence")
+        st.success(f"### {signal_badge(signal_str)} - {final_confidence:.0%} confidence")
     elif signal_str == "SELL":
-        st.error(f"### {signal_badge(signal_str)} — {final_confidence:.0%} confidence")
+        st.error(f"### {signal_badge(signal_str)} - {final_confidence:.0%} confidence")
     else:
-        st.warning(f"### {signal_badge(signal_str)} — {final_confidence:.0%} confidence")
+        st.warning(f"### {signal_badge(signal_str)} - {final_confidence:.0%} confidence")
 
     st.markdown(f"**Agent Agreement:** {agent_agreement:.0%} of agents agree")
     st.markdown(f"**Final Reasoning:** {final_reasoning}")
@@ -201,7 +201,7 @@ _active_token = st.session_state.get("hf_token", "")
 if _active_token:
     st.markdown("*Powered by free HuggingFace AI* 🤖")
 else:
-    st.markdown("*Using rule-based analysis — add HuggingFace token in sidebar to enable AI* 🔧")
+    st.markdown("*Using rule-based analysis - add HuggingFace token in sidebar to enable AI* 🔧")
 
 # ============================================================================
 # SIDEBAR
@@ -236,7 +236,7 @@ with st.sidebar.expander("🔑 HuggingFace API Token", expanded=not st.session_s
     if st.session_state.hf_token:
         st.success("✅ Token saved for this session")
     else:
-        st.info("ℹ️ No token — rule-based scanner will be used")
+        st.info("ℹ️ No token - rule-based scanner will be used")
 # ─────────────────────────────────────────────────────────────
 
 st.sidebar.divider()
@@ -308,7 +308,7 @@ if scan_button:
         progress_bar = st.progress(0)
         status_text = st.empty()
 
-        # Initialize scanner — pass user-supplied token from sidebar
+        # Initialize scanner - pass user-supplied token from sidebar
         _token = st.session_state.get("hf_token") or None
         scanner = MarketScanner(token=_token) if SCANNER_TYPE == "AI" else MarketScanner()
 
@@ -416,7 +416,7 @@ if scan_button:
                         final_signal = fs.value if hasattr(fs, "value") else str(fs)
                         final_confidence = multi_result.get("final_confidence", 0.0)
                     
-                    with st.expander(f"**{symbol}** — {signal_badge(final_signal or 'BUY')} {final_confidence:.0%}" if multi_result else f"**{symbol}**"):
+                    with st.expander(f"**{symbol}** - {signal_badge(final_signal or 'BUY')} {final_confidence:.0%}" if multi_result else f"**{symbol}**"):
                         # Two tabs: Analysis & Chart
                         analysis_tab, chart_tab = st.tabs(["📊 Analysis", "📈 Chart"])
                         
@@ -499,20 +499,20 @@ else:
     ### 🎯 What it does:
     
     **1. Multi-Agent Stock Analysis**
-    - 🧠 **Technical Analysis Agent** — Reads charts, indicators, and price patterns
-    - 📊 **Momentum Strategy Agent** — Identifies trend strength and reversals  
-    - 📈 **Breakout Strategy Agent** — Spots support/resistance breakouts
-    - 🤝 **Consensus Engine** — Aggregates insights for final recommendation
+    - 🧠 **Technical Analysis Agent** - Reads charts, indicators, and price patterns
+    - 📊 **Momentum Strategy Agent** - Identifies trend strength and reversals  
+    - 📈 **Breakout Strategy Agent** - Spots support/resistance breakouts
+    - 🤝 **Consensus Engine** - Aggregates insights for final recommendation
 
     **2. Automated Risk Management**
-    - 💰 **Position Sizing** — Calculates optimal share quantity (1.5% risk per trade)
-    - 🛡️ **Portfolio Protection** — Max 5% capital per position, 30% sector exposure
-    - 📉 **Stop-Loss & Take-Profit** — Auto-calculated based on volatility (ATR)
+    - 💰 **Position Sizing** - Calculates optimal share quantity (1.5% risk per trade)
+    - 🛡️ **Portfolio Protection** - Max 5% capital per position, 30% sector exposure
+    - 📉 **Stop-Loss & Take-Profit** - Auto-calculated based on volatility (ATR)
 
     **3. Paper Trading Execution**
-    - 📝 **Simulated Orders** — Test strategies without real money
-    - 💼 **Live Portfolio Tracking** — Monitor positions, P&L in real-time
-    - 📊 **Performance Analytics** — Win rate, profit factor, Sharpe ratio, and more
+    - 📝 **Simulated Orders** - Test strategies without real money
+    - 💼 **Live Portfolio Tracking** - Monitor positions, P&L in real-time
+    - 📊 **Performance Analytics** - Win rate, profit factor, Sharpe ratio, and more
 
     ---
 
@@ -520,28 +520,28 @@ else:
 
     1. **Add your HuggingFace token** (sidebar) to enable AI analysis
     2. **Select stocks** to scan (Custom or Nifty 50 sample)
-    3. **Click "Run Scanner"** — AI agents analyze each stock
-    4. **Review recommendations** — See why each stock is BUY/HOLD/SELL
-    5. **Execute paper trades** — Test the strategy risk-free
-    6. **Track performance** — Visit Portfolio & Analytics pages
+    3. **Click "Run Scanner"** - AI agents analyze each stock
+    4. **Review recommendations** - See why each stock is BUY/HOLD/SELL
+    5. **Execute paper trades** - Test the strategy risk-free
+    6. **Track performance** - Visit Portfolio & Analytics pages
 
     ---
 
     ### 📊 Navigation:
 
-    - **🏠 Home** (this page) — Run stock scanner
-    - **💼 Portfolio** — View open positions and P&L
-    - **📈 Analytics** — Performance metrics and trade history
+    - **🏠 Home** (this page) - Run stock scanner
+    - **💼 Portfolio** - View open positions and P&L
+    - **📈 Analytics** - Performance metrics and trade history
 
     ---
 
     ### 🔧 Powered by:
 
-    - **HuggingFace Llama-3-8B** — Free AI model for stock analysis
-    - **LangGraph** — Multi-agent orchestration framework
-    - **Yahoo Finance** — Free real-time market data
-    - **Streamlit** — Interactive dashboard
-    - **SQLite** — Local trade journal database
+    - **HuggingFace Llama-3-8B** - Free AI model for stock analysis
+    - **LangGraph** - Multi-agent orchestration framework
+    - **Yahoo Finance** - Free real-time market data
+    - **Streamlit** - Interactive dashboard
+    - **SQLite** - Local trade journal database
 
     ---
 
