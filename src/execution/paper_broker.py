@@ -170,16 +170,34 @@ class PaperBroker(BrokerInterface):
 
         Uses period='1d' for speed — this gives us the latest available price
         without downloading a full history.
+
+        For Indian NSE stocks, Yahoo Finance requires the '.NS' suffix
+        (e.g. RELIANCE.NS, TCS.NS). This method tries the symbol as-is first,
+        then falls back to appending '.NS' if no data is returned.
         """
-        try:
-            ticker = yf.Ticker(symbol)
-            hist = ticker.history(period="1d")
-            if hist.empty:
-                return None
-            return float(hist["Close"].iloc[-1])
-        except Exception as exc:
-            logger.error("yfinance error fetching %s: %s", symbol, exc)
-            return None
+        candidates = [symbol]
+        # If symbol has no exchange suffix, try NSE (.NS) as fallback
+        if "." not in symbol:
+            candidates.append(symbol + ".NS")
+
+        for sym in candidates:
+            try:
+                ticker = yf.Ticker(sym)
+                hist = ticker.history(period="1d")
+                if not hist.empty:
+                    price = float(hist["Close"].iloc[-1])
+                    if price > 0:
+                        logger.info("Fetched live price for %s via %s: %.2f", symbol, sym, price)
+                        return price
+            except Exception as exc:
+                logger.warning("yfinance error fetching %s: %s", sym, exc)
+
+        logger.error(
+            "Could not fetch live price for %s (tried: %s)",
+            symbol,
+            ", ".join(candidates),
+        )
+        return None
 
     def _apply_slippage(self, price: float, side: OrderSide) -> float:
         """Add slippage in the adverse direction.
