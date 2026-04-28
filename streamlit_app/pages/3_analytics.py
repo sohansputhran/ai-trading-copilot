@@ -331,7 +331,7 @@ if st.sidebar.button("🔍 Back to Scanner", use_container_width=True):
     st.switch_page("app.py")
 
 if st.sidebar.button("💼 View Portfolio", use_container_width=True):
-    st.switch_page("pages/2_portfolio.py")
+    st.switch_page("pages/2_Portfolio.py")
 
 if not IS_CLOUD_DEPLOYMENT:
     if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
