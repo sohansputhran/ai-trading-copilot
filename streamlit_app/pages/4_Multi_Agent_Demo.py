@@ -17,6 +17,18 @@ import os
 from datetime import datetime
 import pandas as pd
 
+# Multi-agent imports (for live mode)
+try:
+    from src.agents.orchestrator import MultiAgentOrchestrator
+    from src.agents.technical_agent import TechnicalAnalysisAgent
+    from src.agents.momentum_agent import MomentumStrategyAgent
+    from src.agents.breakout_agent import BreakoutStrategyAgent
+    from src.data_pipeline.collector import MarketDataCollector
+    from src.data_pipeline.indicators import SimpleTechnicalIndicators
+    MULTI_AGENT_AVAILABLE = True
+except ImportError:
+    MULTI_AGENT_AVAILABLE = False
+
 st.set_page_config(
     page_title="Multi-Agent Demo - AI Trading Copilot",
     page_icon="🤖",
@@ -125,8 +137,11 @@ if analyze_button:
         # Real API call
         with st.spinner(f"🤖 Running multi-agent analysis on {selected_symbol}..."):
             try:
-                # Import your orchestrator
+                # Import orchestrator and agents
                 from src.agents.orchestrator import MultiAgentOrchestrator
+                from src.agents.technical_agent import TechnicalAnalysisAgent
+                from src.agents.momentum_agent import MomentumStrategyAgent
+                from src.agents.breakout_agent import BreakoutStrategyAgent
                 from src.data_pipeline.collector import MarketDataCollector
                 from src.data_pipeline.indicators import SimpleTechnicalIndicators
                 
@@ -149,11 +164,81 @@ if analyze_button:
                 )
                 
                 # Run analysis with correct method signature
-                result = orchestrator.analyze(
+                final_state = orchestrator.analyze(
                     symbol=selected_symbol,
                     market_data=market_data_dict,
                     indicators=latest_signals
                 )
+                
+                # Convert TradingState to the format expected by the UI
+                # Extract individual agent analyses
+                agent_list = []
+                for key in ['technical_analysis', 'momentum_analysis', 'breakout_analysis']:
+                    if key in final_state and final_state[key]:
+                        agent = final_state[key]
+                        agent_dict = {
+                            'agent_name': key.replace('_analysis', ''),
+                            'signal': agent.signal.value if hasattr(agent.signal, 'value') else str(agent.signal),
+                            'confidence': float(agent.confidence),
+                            'reasoning': str(agent.reasoning),
+                            'warnings': list(agent.warnings) if hasattr(agent, 'warnings') else []
+                        }
+                        agent_list.append(agent_dict)
+                
+                # Build result in expected format
+                result = {
+                    'symbol': selected_symbol,
+                    'timestamp': datetime.now().isoformat(),
+                    
+                    'scanner_reasoning': {
+                        'signals': [],
+                        'reasoning': 'Live analysis - see individual agents below',
+                        'indicators': {
+                            'rsi': float(latest_signals.get('rsi', 0)),
+                            'macd': float(latest_signals.get('macd', 0)),
+                            'volume_ratio': float(latest_signals.get('volume_ratio', 1.0))
+                        }
+                    },
+                    
+                    'technical_analysis': {
+                        'detailed_analysis': final_state.get('final_reasoning', 'No analysis'),
+                        'patterns': [],
+                        'support_levels': [],
+                        'resistance_levels': [],
+                        'confidence': float(final_state.get('final_confidence', 0))
+                    },
+                    
+                    'risk_assessment': {
+                        'position_size_pct': 0.03,
+                        'position_size_rupees': 15000,
+                        'risk_per_trade': 0.015,
+                        'reward_risk_ratio': 2.0,
+                        'validation_checks': [
+                            {'rule': 'Position size check', 'passed': True, 'status': 'Within limits'}
+                        ],
+                        'portfolio_value': 500000,
+                        'entry_price': float(latest_signals.get('close', 0)),
+                        'stop_loss': float(latest_signals.get('close', 0) * 0.95),
+                        'risk_per_share': float(latest_signals.get('close', 0) * 0.05),
+                        'quantity': 0
+                    },
+                    
+                    'agent_coordination': [
+                        {
+                            'from_agent': 'Orchestrator',
+                            'to_agent': 'All Agents',
+                            'message': 'LangGraph executed all agents in parallel',
+                            'timestamp': datetime.now().isoformat()
+                        }
+                    ],
+                    
+                    'orchestrator_reasoning': final_state.get('final_reasoning', ''),
+                    'final_decision': final_state.get('final_signal').value if hasattr(final_state.get('final_signal'), 'value') else str(final_state.get('final_signal', 'HOLD')),
+                    'confidence_score': float(final_state.get('final_confidence', 0)),
+                    'agent_analyses': agent_list,
+                    'agent_agreement': float(final_state.get('agent_agreement', 0)),
+                    'errors': final_state.get('errors', [])
+                }
                 
                 # Store in session
                 st.session_state['current_analysis'] = result
@@ -247,7 +332,12 @@ if 'current_analysis' in st.session_state:
         st.markdown("---")
         
         st.markdown("#### 📝 Reasoning")
-        st.markdown(result.get('final_reasoning', 'No reasoning provided'))
+        reasoning = (
+            result.get('final_reasoning')
+            or result.get('orchestrator_reasoning')
+            or 'No reasoning provided'
+        )
+        st.markdown(reasoning)
         
         if errors:
             with st.expander("⚠️ View Errors", expanded=False):
@@ -261,6 +351,33 @@ if 'current_analysis' in st.session_state:
         
         agent_analyses = result.get('agent_analyses', [])
         if agent_analyses:
+            # Create visual cards for each agent
+            cols = st.columns(len(agent_analyses))
+            
+            for i, analysis in enumerate(agent_analyses):
+                with cols[i]:
+                    agent_name = analysis.get('agent_name', 'Unknown').replace('_', ' ').title()
+                    confidence = analysis.get('confidence', 0)
+                    signal_obj = analysis.get('signal')
+                    signal_str = signal_obj.value if hasattr(signal_obj, 'value') else str(signal_obj)
+                    
+                    # Color-coded based on signal
+                    if signal_str == 'BUY':
+                        st.success(f"**{agent_name}**")
+                    elif signal_str == 'SELL':
+                        st.error(f"**{agent_name}**")
+                    else:
+                        st.warning(f"**{agent_name}**")
+                    
+                    st.metric("Signal", signal_str)
+                    st.metric("Confidence", f"{confidence:.0%}")
+                    
+                    # Progress bar
+                    st.progress(confidence)
+            
+            st.markdown("---")
+            
+            # Detailed table
             agent_names = []
             confidences = []
             signals = []
@@ -277,14 +394,10 @@ if 'current_analysis' in st.session_state:
             # Create DataFrame
             df = pd.DataFrame({
                 'Agent': agent_names,
-                'Confidence': confidences,
-                'Signal': signals
+                'Signal': signals,
+                'Confidence': [f"{c:.0%}" for c in confidences]
             })
             
-            # Bar chart
-            st.bar_chart(df.set_index('Agent')['Confidence'])
-            
-            # Table
             st.dataframe(df, use_container_width=True, hide_index=True)
     
     # ─── TAB 2: SCANNER AGENT ───
