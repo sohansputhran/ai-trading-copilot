@@ -1,0 +1,678 @@
+"""
+Multi-Agent Analysis Demo Page
+
+Shows detailed agent reasoning, coordination, and decision-making process.
+Works in both demo mode (pre-recorded) and live mode (real API calls).
+"""
+
+import sys
+from pathlib import Path
+
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+import streamlit as st
+import json
+import os
+from datetime import datetime
+import pandas as pd
+
+st.set_page_config(
+    page_title="Multi-Agent Demo - AI Trading Copilot",
+    page_icon="🤖",
+    layout="wide"
+)
+
+# ============================================================================
+# DEMO MODE CHECK
+# ============================================================================
+
+demo_mode = st.session_state.get('demo_mode', True)
+
+# ============================================================================
+# PAGE HEADER
+# ============================================================================
+
+st.title("🤖 Multi-Agent Analysis System")
+
+if demo_mode:
+    st.info("""
+    🎬 **Demo Mode**: Showing pre-recorded agent reasoning from actual system runs.
+    
+    This demonstrates the full multi-agent orchestration with LangGraph, including:
+    - Individual agent analyses (Technical, Momentum, Breakout)
+    - Agent coordination and message passing
+    - Consensus building and final decision
+    - Risk assessment and position sizing
+    """)
+else:
+    st.success("🔴 **Live Mode**: Running real-time multi-agent analysis with API calls")
+
+st.markdown("---")
+
+# ============================================================================
+# STOCK SELECTOR
+# ============================================================================
+
+col1, col2, col3 = st.columns([2, 2, 1])
+
+with col1:
+    if demo_mode:
+        # Load available demo stocks
+        demo_file = Path("streamlit_app/demo_data/multi_agent_results.json")
+        
+        if demo_file.exists():
+            with open(demo_file) as f:
+                demo_data = json.load(f)
+            
+            available_symbols = [item['symbol'] for item in demo_data]
+            selected_symbol = st.selectbox(
+                "📊 Select Stock to Analyze",
+                available_symbols,
+                index=0,
+                help="Choose from pre-recorded multi-agent analyses"
+            )
+        else:
+            st.error("""
+            ⚠️ **Demo data not found!**
+            
+            Please generate demo data first:
+            1. Run locally with API keys
+            2. Execute: `python scripts/generate_demo_data.py`
+            3. Commit `streamlit_app/demo_data/multi_agent_results.json`
+            4. Redeploy
+            """)
+            st.stop()
+    else:
+        # Live mode - text input
+        selected_symbol = st.text_input(
+            "📊 Enter Stock Symbol",
+            "RELIANCE.NS",
+            help="NSE symbol (e.g., RELIANCE.NS, TCS.NS)"
+        )
+
+with col2:
+    if demo_mode and demo_file.exists():
+        # Show quick stats for selected stock
+        result = next((r for r in demo_data if r['symbol'] == selected_symbol), None)
+        if result:
+            st.metric(
+                "Decision",
+                result['final_decision'],
+                f"{result['confidence_score']:.0%} confidence"
+            )
+
+with col3:
+    analyze_button = st.button(
+        "🔍 Analyze",
+        type="primary",
+        use_container_width=True,
+        help="Run multi-agent analysis"
+    )
+
+# ============================================================================
+# RUN ANALYSIS
+# ============================================================================
+
+if analyze_button:
+    if demo_mode:
+        # Load pre-recorded result
+        result = next((r for r in demo_data if r['symbol'] == selected_symbol), None)
+        if result:
+            st.session_state['current_analysis'] = result
+            st.success(f"✅ Loaded demo analysis for {selected_symbol}")
+    else:
+        # Real API call
+        with st.spinner(f"🤖 Running multi-agent analysis on {selected_symbol}..."):
+            try:
+                # Import your orchestrator
+                from src.agents.orchestrator import MultiAgentOrchestrator
+                from src.data_pipeline.collector import MarketDataCollector
+                from src.data_pipeline.indicators import SimpleTechnicalIndicators
+                
+                # Fetch data
+                collector = MarketDataCollector()
+                calculator = SimpleTechnicalIndicators()
+                
+                data = collector.fetch_data(selected_symbol, period="3mo")
+                data_with_indicators = calculator.calculate_all(data)
+                latest_signals = calculator.get_latest_signals(data_with_indicators)
+                
+                # Convert DataFrame to dict for market_data
+                market_data_dict = data_with_indicators.to_dict('list')
+                
+                # Initialize the three agents
+                orchestrator = MultiAgentOrchestrator(
+                    technical_agent=TechnicalAnalysisAgent(),
+                    momentum_agent=MomentumStrategyAgent(),
+                    breakout_agent=BreakoutStrategyAgent()
+                )
+                
+                # Run analysis with correct method signature
+                result = orchestrator.analyze(
+                    symbol=selected_symbol,
+                    market_data=market_data_dict,
+                    indicators=latest_signals
+                )
+                
+                # Store in session
+                st.session_state['current_analysis'] = result
+                st.success(f"✅ Analysis complete for {selected_symbol}")
+                
+            except Exception as e:
+                st.error(f"❌ Analysis failed: {e}")
+                st.stop()
+
+# ============================================================================
+# DISPLAY ANALYSIS RESULTS
+# ============================================================================
+
+if 'current_analysis' in st.session_state:
+    result = st.session_state['current_analysis']
+    
+    st.markdown("---")
+    
+    # ========================================================================
+    # DECISION HEADER
+    # ========================================================================
+    
+    col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+    
+    with col1:
+        st.markdown(f"## 📊 Analysis: **{result['symbol']}**")
+        if 'timestamp' in result:
+            st.caption(f"Generated: {result['timestamp'][:19]}")
+    
+    with col2:
+        decision = result['final_decision']
+        if decision == "BUY":
+            st.success(f"### {decision}")
+        elif decision == "SELL":
+            st.error(f"### {decision}")
+        else:
+            st.warning(f"### {decision}")
+    
+    with col3:
+        confidence = result['confidence_score']
+        st.metric("Confidence", f"{confidence:.0%}")
+    
+    with col4:
+        # Count how many agents were used
+        agent_count = len(result.get('agent_analyses', []))
+        st.metric("Agents", f"{agent_count}/3")
+    
+    st.markdown("---")
+    
+    # ========================================================================
+    # AGENT TABS
+    # ========================================================================
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🎯 Final Decision",
+        "🔍 Scanner Agent",
+        "📈 Technical Agent",
+        "🛡️ Risk Assessment",
+        "🧠 Agent Flow"
+    ])
+    
+    # ─── TAB 1: FINAL DECISION ───
+    with tab1:
+        st.markdown("### 🎯 Orchestrator Final Decision")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric(
+                "Final Signal",
+                result['final_decision'],
+                delta=f"{result['confidence_score']:.0%} confidence"
+            )
+        
+        with col2:
+            agent_agreement = result.get('agent_agreement', 0)
+            st.metric(
+                "Agent Agreement",
+                f"{agent_agreement:.0%}",
+                delta="Strong consensus" if agent_agreement >= 0.8 else "Mixed views"
+            )
+        
+        with col3:
+            errors = result.get('errors', [])
+            st.metric(
+                "Status",
+                "⚠️ Errors" if errors else "✅ Clean",
+                delta=f"{len(errors)} issues" if errors else "No issues"
+            )
+        
+        st.markdown("---")
+        
+        st.markdown("#### 📝 Reasoning")
+        st.markdown(result.get('final_reasoning', 'No reasoning provided'))
+        
+        if errors:
+            with st.expander("⚠️ View Errors", expanded=False):
+                for err in errors:
+                    st.error(err)
+        
+        st.markdown("---")
+        
+        # Agent confidence breakdown
+        st.markdown("#### 📊 Agent Confidence Breakdown")
+        
+        agent_analyses = result.get('agent_analyses', [])
+        if agent_analyses:
+            agent_names = []
+            confidences = []
+            signals = []
+            
+            for analysis in agent_analyses:
+                agent_name = analysis.get('agent_name', 'Unknown').replace('_', ' ').title()
+                agent_names.append(agent_name)
+                confidences.append(analysis.get('confidence', 0))
+                
+                signal_obj = analysis.get('signal')
+                signal_str = signal_obj.value if hasattr(signal_obj, 'value') else str(signal_obj)
+                signals.append(signal_str)
+            
+            # Create DataFrame
+            df = pd.DataFrame({
+                'Agent': agent_names,
+                'Confidence': confidences,
+                'Signal': signals
+            })
+            
+            # Bar chart
+            st.bar_chart(df.set_index('Agent')['Confidence'])
+            
+            # Table
+            st.dataframe(df, use_container_width=True, hide_index=True)
+    
+    # ─── TAB 2: SCANNER AGENT ───
+    with tab2:
+        scanner = result.get('scanner_reasoning', {})
+        
+        if scanner:
+            st.markdown("### 🔍 Initial Screening Results")
+            
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                st.markdown("#### AI Reasoning")
+                st.markdown(scanner.get('reasoning', 'No reasoning provided'))
+                
+                st.markdown("#### 🎯 Detected Signals")
+                signals = scanner.get('signals', [])
+                if signals:
+                    for signal in signals:
+                        st.markdown(f"- ✅ {signal}")
+                else:
+                    st.info("No special signals detected")
+            
+            with col2:
+                st.markdown("#### 📊 Technical Snapshot")
+                
+                indicators = scanner.get('indicators', {})
+                
+                rsi = indicators.get('rsi', 0)
+                rsi_status = "Oversold" if rsi < 30 else "Overbought" if rsi > 70 else "Neutral"
+                rsi_delta = rsi_status
+                
+                st.metric("RSI", f"{rsi:.1f}", delta=rsi_delta)
+                st.metric("MACD", f"{indicators.get('macd', 0):.2f}")
+                st.metric("Volume Ratio", f"{indicators.get('volume_ratio', 0):.1f}x")
+        else:
+            st.info("Scanner data not available in this analysis")
+    
+    # ─── TAB 3: TECHNICAL AGENT ───
+    with tab3:
+        technical = result.get('technical_analysis', {})
+        
+        if technical:
+            st.markdown("### 📈 Deep Technical Analysis")
+            
+            # Main analysis
+            st.markdown(technical.get('detailed_analysis', 'No analysis available'))
+            
+            st.markdown("---")
+            
+            # Patterns, Support, Resistance
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown("#### 🔍 Patterns Identified")
+                patterns = technical.get('patterns', [])
+                if patterns:
+                    for pattern in patterns:
+                        st.markdown(f"**{pattern.get('name', 'Unknown')}**")
+                        st.caption(pattern.get('description', ''))
+                else:
+                    st.info("No patterns detected")
+            
+            with col2:
+                st.markdown("#### 📉 Support Levels")
+                supports = technical.get('support_levels', [])
+                if supports:
+                    for level in supports:
+                        st.markdown(f"₹ {level:,.2f}")
+                else:
+                    st.info("No support levels calculated")
+            
+            with col3:
+                st.markdown("#### 📈 Resistance Levels")
+                resistances = technical.get('resistance_levels', [])
+                if resistances:
+                    for level in resistances:
+                        st.markdown(f"₹ {level:,.2f}")
+                else:
+                    st.info("No resistance levels calculated")
+            
+            st.markdown("---")
+            
+            # Agent confidence
+            tech_confidence = technical.get('confidence', 0)
+            st.metric(
+                "Technical Agent Confidence",
+                f"{tech_confidence:.0%}",
+                delta="High" if tech_confidence > 0.7 else "Medium" if tech_confidence > 0.4 else "Low"
+            )
+        else:
+            st.info("Technical analysis not available")
+    
+    # ─── TAB 4: RISK ASSESSMENT ───
+    with tab4:
+        risk = result.get('risk_assessment', {})
+        
+        if risk:
+            st.markdown("### 🛡️ Risk Management & Position Sizing")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                position_pct = risk.get('position_size_pct', 0)
+                st.metric("Position Size", f"{position_pct:.1%}")
+                st.caption(f"₹ {risk.get('position_size_rupees', 0):,.0f}")
+            
+            with col2:
+                risk_per_trade = risk.get('risk_per_trade', 0)
+                st.metric("Risk/Trade", f"{risk_per_trade:.2%}")
+            
+            with col3:
+                rr_ratio = risk.get('reward_risk_ratio', 0)
+                st.metric("R:R Ratio", f"1:{rr_ratio:.1f}")
+            
+            with col4:
+                quantity = risk.get('quantity', 0)
+                st.metric("Quantity", f"{quantity} shares")
+            
+            st.markdown("---")
+            
+            # Pre-trade validation
+            st.markdown("#### ✅ Pre-Trade Validation Checks")
+            
+            checks = risk.get('validation_checks', [])
+            if checks:
+                for check in checks:
+                    passed = check.get('passed', False)
+                    rule = check.get('rule', 'Unknown check')
+                    status = check.get('status', '')
+                    
+                    col1, col2 = st.columns([1, 4])
+                    
+                    with col1:
+                        if passed:
+                            st.success("✅")
+                        else:
+                            st.error("❌")
+                    
+                    with col2:
+                        st.markdown(f"**{rule}**")
+                        st.caption(status)
+            else:
+                st.info("No validation checks recorded")
+            
+            st.markdown("---")
+            
+            # Position sizing details
+            with st.expander("📊 Position Sizing Calculation Details"):
+                st.code(f"""
+Portfolio Value:    ₹ {risk.get('portfolio_value', 500000):,.0f}
+Max Risk per Trade: {risk.get('max_risk_pct', 2.0)}%
+Max Position Size:  {risk.get('max_position_pct', 5.0)}%
+
+Entry Price:        ₹ {risk.get('entry_price', 0):.2f}
+Stop Loss:          ₹ {risk.get('stop_loss', 0):.2f}
+Risk per Share:     ₹ {risk.get('risk_per_share', 0):.2f}
+
+Calculated Shares:  {risk.get('quantity', 0)}
+Position Value:     ₹ {risk.get('position_size_rupees', 0):,.0f}
+Total Risk Amount:  ₹ {risk.get('position_size_rupees', 0) * risk.get('risk_per_trade', 0) / 100:.2f}
+                """, language="text")
+        else:
+            st.info("Risk assessment not available")
+    
+    # ─── TAB 5: AGENT FLOW ───
+    with tab5:
+        st.markdown("### 🧠 Agent Coordination Flow")
+        
+        st.markdown("""
+        This shows how the LangGraph orchestrator coordinates the specialized agents
+        to make the final trading decision. Each step represents agent-to-agent communication.
+        """)
+        
+        coordination = result.get('agent_coordination', [])
+        
+        if coordination:
+            st.markdown("#### 📨 Agent Communication Timeline")
+            
+            for i, message in enumerate(coordination, 1):
+                with st.container():
+                    col1, col2 = st.columns([1, 5])
+                    
+                    with col1:
+                        st.markdown(f"**Step {i}**")
+                        timestamp = message.get('timestamp', 'N/A')
+                        st.caption(timestamp if isinstance(timestamp, str) else str(timestamp))
+                    
+                    with col2:
+                        from_agent = message.get('from_agent', 'Unknown')
+                        to_agent = message.get('to_agent', 'Unknown')
+                        msg = message.get('message', 'No message')
+                        
+                        st.markdown(f"**{from_agent}** → **{to_agent}**")
+                        st.info(msg)
+                    
+                    # Add arrow between steps
+                    if i < len(coordination):
+                        st.markdown("↓")
+        else:
+            st.info("""
+            Agent coordination data not available.
+            
+            In live mode with full LangGraph implementation, this tab would show:
+            - Step-by-step agent communication
+            - State transitions
+            - Decision reasoning flow
+            - Timestamp for each step
+            """)
+        
+        st.markdown("---")
+        
+        # Visual flow diagram
+        st.markdown("#### 🔄 System Architecture")
+        
+        st.graphviz_chart('''
+            digraph {
+                rankdir=LR;
+                node [shape=box, style="rounded,filled", fillcolor=lightblue];
+                
+                Start [label="Market Data", fillcolor=lightgreen]
+                Scanner [label="Scanner\nAgent"]
+                Technical [label="Technical\nAgent"]
+                Momentum [label="Momentum\nAgent"]
+                Breakout [label="Breakout\nAgent"]
+                Orchestrator [label="Orchestrator\n(LangGraph)", fillcolor=gold]
+                Risk [label="Risk\nValidator"]
+                Decision [label="Final\nDecision", fillcolor=lightcoral]
+                
+                Start -> Scanner
+                Scanner -> Orchestrator [label="Candidates"]
+                Orchestrator -> Technical [label="Analyze"]
+                Orchestrator -> Momentum [label="Analyze"]
+                Orchestrator -> Breakout [label="Analyze"]
+                Technical -> Orchestrator [label="Score"]
+                Momentum -> Orchestrator [label="Score"]
+                Breakout -> Orchestrator [label="Score"]
+                Orchestrator -> Risk [label="Validate"]
+                Risk -> Decision [label="Approved"]
+            }
+        ''')
+
+else:
+    # ========================================================================
+    # NO ANALYSIS YET - SHOW PLACEHOLDER
+    # ========================================================================
+    
+    st.markdown("### 👆 Select a stock and click 'Analyze' to see multi-agent reasoning")
+    
+    st.markdown("""
+    ## How the Multi-Agent System Works
+    
+    This page demonstrates the complete multi-agent architecture:
+    
+    ### 🔄 Process Flow
+    
+    1. **Scanner Agent** 
+       - Screens the market for opportunities
+       - Applies technical filters (RSI, volume, MACD)
+       - Flags stocks worthy of deeper analysis
+    
+    2. **Specialized Strategy Agents**
+       - **Technical Agent**: Deep indicator analysis, pattern recognition
+       - **Momentum Agent**: Trend strength, directional bias
+       - **Breakout Agent**: Support/resistance levels, breakout potential
+    
+    3. **LangGraph Orchestrator**
+       - Coordinates all agents via state machine
+       - Aggregates individual analyses
+       - Builds consensus from agent recommendations
+    
+    4. **Risk Validator**
+       - Calculates position size (Kelly Criterion)
+       - Validates against portfolio constraints
+       - Ensures risk limits are respected
+    
+    5. **Final Decision**
+       - BUY / HOLD / SELL with confidence score
+       - Complete reasoning chain
+       - Risk-adjusted position sizing
+    
+    ---
+    
+    ### 🎯 What Makes This Different
+    
+    **Not just an LLM wrapper:**
+    - ✅ True LangGraph state machine
+    - ✅ Agent-to-agent communication
+    - ✅ Explicit reasoning chains
+    - ✅ Production-grade risk management
+    
+    **Explainable AI:**
+    - Every decision is traceable
+    - Individual agent confidence scores
+    - Clear consensus mechanism
+    - No black-box outputs
+    
+    ---
+    
+    **Ready to explore?** Select a stock from the dropdown above and click Analyze!
+    """)
+    
+    # Show architecture diagram
+    with st.expander("🏗️ View System Architecture"):
+        st.graphviz_chart('''
+            digraph {
+                rankdir=TB;
+                node [shape=box, style="rounded,filled"];
+                
+                subgraph cluster_input {
+                    label="Data Layer";
+                    style=filled;
+                    color=lightgrey;
+                    
+                    Market [label="Market Data\n(Yahoo Finance)", fillcolor=lightgreen]
+                    Indicators [label="Technical\nIndicators", fillcolor=lightgreen]
+                }
+                
+                subgraph cluster_agents {
+                    label="Agent Layer (LangGraph)";
+                    style=filled;
+                    color=lightblue;
+                    
+                    Scanner [label="Scanner Agent"]
+                    Technical [label="Technical Agent"]
+                    Momentum [label="Momentum Agent"]
+                    Breakout [label="Breakout Agent"]
+                    Orchestrator [label="Orchestrator", fillcolor=gold]
+                }
+                
+                subgraph cluster_risk {
+                    label="Risk Layer";
+                    style=filled;
+                    color=lightyellow;
+                    
+                    Position [label="Position Sizer"]
+                    Validator [label="Pre-Trade\nValidator"]
+                }
+                
+                Decision [label="Final Decision\n(BUY/HOLD/SELL)", fillcolor=lightcoral, shape=diamond]
+                
+                Market -> Indicators
+                Indicators -> Scanner
+                Scanner -> Orchestrator
+                Orchestrator -> Technical
+                Orchestrator -> Momentum
+                Orchestrator -> Breakout
+                Technical -> Orchestrator
+                Momentum -> Orchestrator
+                Breakout -> Orchestrator
+                Orchestrator -> Position
+                Position -> Validator
+                Validator -> Decision
+            }
+        ''')
+
+# ============================================================================
+# FOOTER
+# ============================================================================
+
+st.markdown("---")
+
+if demo_mode:
+    st.info("""
+    💡 **You're in Demo Mode**
+    
+    This shows authentic agent reasoning captured from local runs with real API calls.
+    All multi-agent coordination, risk calculations, and decisions are genuine.
+    
+    **To run live:**
+    ```bash
+    git clone https://github.com/sohansputhran/ai-trading-copilot.git
+    # Add HUGGINGFACE_API_TOKEN=hf_... to .env
+    streamlit run streamlit_app/app.py
+    ```
+    
+    [📖 Architecture Docs](https://github.com/sohansputhran/ai-trading-copilot#architecture) |
+    [💻 Source Code](https://github.com/sohansputhran/ai-trading-copilot) |
+    [🎥 Watch Demo Video](https://github.com/sohansputhran/ai-trading-copilot#demo)
+    """)
+else:
+    st.success("""
+    🔴 **Live Mode Active**
+    
+    You're running real-time multi-agent analysis with API calls.
+    Each analysis consumes HuggingFace API credits.
+    
+    💡 **Tip:** Enable demo mode in sidebar to explore without API costs.
+    """)
+
+st.caption("Built with ❤️ using LangGraph, HuggingFace, and Streamlit")
