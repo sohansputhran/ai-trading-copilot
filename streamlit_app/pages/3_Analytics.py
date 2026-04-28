@@ -327,14 +327,14 @@ st.sidebar.markdown("---")
 # Quick Actions
 st.sidebar.markdown("### 🚀 Quick Actions")
 
-if st.sidebar.button("🔍 Back to Scanner", use_container_width=True):
+if st.sidebar.button("🔍 Back to Scanner", width='stretch'):
     st.switch_page("app.py")
 
-if st.sidebar.button("💼 View Portfolio", use_container_width=True):
+if st.sidebar.button("💼 View Portfolio", width='stretch'):
     st.switch_page("pages/2_Portfolio.py")
 
 if not IS_CLOUD_DEPLOYMENT:
-    if st.sidebar.button("🔄 Refresh Data", use_container_width=True):
+    if st.sidebar.button("🔄 Refresh Data", width='stretch'):
         st.rerun()
 
 st.sidebar.markdown("---")

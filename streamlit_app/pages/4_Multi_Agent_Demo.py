@@ -118,7 +118,7 @@ with col3:
     analyze_button = st.button(
         "🔍 Analyze",
         type="primary",
-        use_container_width=True,
+        width='stretch',
         help="Run multi-agent analysis"
     )
 
@@ -398,7 +398,7 @@ if 'current_analysis' in st.session_state:
                 'Confidence': [f"{c:.0%}" for c in confidences]
             })
             
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(df, width='stretch', hide_index=True)
     
     # ─── TAB 2: SCANNER AGENT ───
     with tab2:
@@ -444,47 +444,165 @@ if 'current_analysis' in st.session_state:
             st.markdown("### 📈 Deep Technical Analysis")
             
             # Main analysis
-            st.markdown(technical.get('detailed_analysis', 'No analysis available'))
+            detailed = technical.get('detailed_analysis', 'No analysis available')
+            
+            # Parse if it's the raw agent breakdown format
+            if 'FINAL DECISION:' in detailed or 'AGENT BREAKDOWN:' in detailed:
+                # Extract components
+                lines = detailed.split('\n')
+                
+                # Parse final decision
+                final_decision_line = [l for l in lines if 'FINAL DECISION:' in l]
+                agent_breakdown_start = next((i for i, l in enumerate(lines) if 'AGENT BREAKDOWN:' in l), None)
+                warnings_start = next((i for i, l in enumerate(lines) if 'WARNINGS:' in l), None)
+                
+                # Display final decision
+                if final_decision_line:
+                    st.info(final_decision_line[0].replace('FINAL DECISION:', '**Final Decision:**'))
+                
+                st.markdown("---")
+                
+                # Display individual agents
+                st.markdown("#### 🤖 Individual Agent Analyses")
+                
+                if agent_breakdown_start:
+                    # Find all agent sections
+                    agent_sections = []
+                    current_agent = None
+                    
+                    for i in range(agent_breakdown_start + 1, len(lines)):
+                        line = lines[i].strip()
+                        
+                        if line.startswith('✓ TECHNICAL_ANALYSIS:') or line.startswith('✗ TECHNICAL_ANALYSIS:'):
+                            if current_agent:
+                                agent_sections.append(current_agent)
+                            current_agent = {'type': 'technical', 'lines': [line]}
+                        elif line.startswith('✓ MOMENTUM_STRATEGY:') or line.startswith('✗ MOMENTUM_STRATEGY:'):
+                            if current_agent:
+                                agent_sections.append(current_agent)
+                            current_agent = {'type': 'momentum', 'lines': [line]}
+                        elif line.startswith('✓ BREAKOUT_STRATEGY:') or line.startswith('✗ BREAKOUT_STRATEGY:'):
+                            if current_agent:
+                                agent_sections.append(current_agent)
+                            current_agent = {'type': 'breakout', 'lines': [line]}
+                        elif current_agent and line and not line.startswith('WARNINGS:'):
+                            current_agent['lines'].append(line)
+                        elif line.startswith('WARNINGS:'):
+                            if current_agent:
+                                agent_sections.append(current_agent)
+                            break
+                    
+                    # Add last agent if exists
+                    if current_agent and current_agent not in agent_sections:
+                        agent_sections.append(current_agent)
+                    
+                    # Display each agent in columns
+                    if agent_sections:
+                        cols = st.columns(len(agent_sections))
+                        
+                        for idx, agent in enumerate(agent_sections):
+                            with cols[idx]:
+                                # Parse header
+                                header = agent['lines'][0]
+                                is_buy = '✓' in header or 'BUY' in header
+                                is_sell = '✗' in header or 'SELL' in header
+                                
+                                # Extract agent name and signal
+                                if 'TECHNICAL_ANALYSIS:' in header:
+                                    name = "📊 Technical"
+                                    signal_match = header.split('TECHNICAL_ANALYSIS:')[1].split('(')[0].strip()
+                                elif 'MOMENTUM_STRATEGY:' in header:
+                                    name = "📈 Momentum"
+                                    signal_match = header.split('MOMENTUM_STRATEGY:')[1].split('(')[0].strip()
+                                elif 'BREAKOUT_STRATEGY:' in header:
+                                    name = "🚀 Breakout"
+                                    signal_match = header.split('BREAKOUT_STRATEGY:')[1].split('(')[0].strip()
+                                else:
+                                    name = "Agent"
+                                    signal_match = "UNKNOWN"
+                                
+                                # Extract confidence
+                                try:
+                                    confidence_match = header.split('(')[1].split(')')[0] if '(' in header else "0%"
+                                except:
+                                    confidence_match = "0%"
+                                
+                                # Display card
+                                if 'BUY' in signal_match:
+                                    st.success(f"**{name}**")
+                                elif 'SELL' in signal_match:
+                                    st.error(f"**{name}**")
+                                else:
+                                    st.warning(f"**{name}**")
+                                
+                                st.metric("Signal", signal_match)
+                                st.metric("Confidence", confidence_match)
+                                
+                                # Extract reasoning
+                                reasoning_lines = []
+                                for line in agent['lines'][1:]:
+                                    clean_line = line.replace('—', '').strip()
+                                    if clean_line and not clean_line.startswith('✓') and not clean_line.startswith('✗'):
+                                        reasoning_lines.append(clean_line)
+                                
+                                if reasoning_lines:
+                                    with st.expander("💡 View Details"):
+                                        for line in reasoning_lines:
+                                            st.caption(f"• {line}")
+                
+                # Display warnings
+                if warnings_start:
+                    st.markdown("---")
+                    st.markdown("#### ⚠️ Warnings")
+                    warning_lines = [l.strip() for l in lines[warnings_start+1:] if l.strip()]
+                    for warning in warning_lines:
+                        clean_warning = warning.replace('⚠', '').replace('[breakout_strategy]', '').replace('[technical_analysis]', '').replace('[momentum_strategy]', '').strip()
+                        if clean_warning:
+                            st.warning(clean_warning)
+            
+            else:
+                # Simple analysis text - display as-is
+                st.markdown(detailed)
             
             st.markdown("---")
             
-            # Patterns, Support, Resistance
+            # Patterns, Support, Resistance (if available)
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                st.markdown("#### 🔍 Patterns Identified")
+                st.markdown("#### 🔍 Patterns")
                 patterns = technical.get('patterns', [])
                 if patterns:
                     for pattern in patterns:
                         st.markdown(f"**{pattern.get('name', 'Unknown')}**")
                         st.caption(pattern.get('description', ''))
                 else:
-                    st.info("No patterns detected")
+                    st.info("No specific patterns identified")
             
             with col2:
-                st.markdown("#### 📉 Support Levels")
+                st.markdown("#### 📉 Support")
                 supports = technical.get('support_levels', [])
                 if supports:
                     for level in supports:
                         st.markdown(f"₹ {level:,.2f}")
                 else:
-                    st.info("No support levels calculated")
+                    st.info("Support levels not calculated")
             
             with col3:
-                st.markdown("#### 📈 Resistance Levels")
+                st.markdown("#### 📈 Resistance")
                 resistances = technical.get('resistance_levels', [])
                 if resistances:
                     for level in resistances:
                         st.markdown(f"₹ {level:,.2f}")
                 else:
-                    st.info("No resistance levels calculated")
+                    st.info("Resistance levels not calculated")
             
             st.markdown("---")
             
-            # Agent confidence
+            # Overall confidence
             tech_confidence = technical.get('confidence', 0)
             st.metric(
-                "Technical Agent Confidence",
+                "📊 Overall Technical Confidence",
                 f"{tech_confidence:.0%}",
                 delta="High" if tech_confidence > 0.7 else "Medium" if tech_confidence > 0.4 else "Low"
             )

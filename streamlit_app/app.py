@@ -342,7 +342,7 @@ with st.sidebar:
     st.markdown("---")
     
     # Run scanner button
-    run_scanner = st.button("🔍 Run Scanner", type="primary", use_container_width=True)
+    run_scanner = st.button("🔍 Run Scanner", type="primary", width='stretch')
     
     if run_scanner:
         st.session_state["scan_triggered"] = True
@@ -353,15 +353,15 @@ with st.sidebar:
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🤖 Multi-Agent", use_container_width=True):
+        if st.button("🤖 Multi-Agent", width='stretch'):
             st.switch_page("pages/2_🤖_Multi_Agent_Demo.py")
     with col2:
-        if st.button("💼 Portfolio", use_container_width=True):
+        if st.button("💼 Portfolio", width='stretch'):
             st.switch_page("pages/3_💼_Portfolio.py")
     
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("📈 Analytics", use_container_width=True):
+        if st.button("📈 Analytics", width='stretch'):
             st.switch_page("pages/4_📈_Analytics.py")
     with col2:
         pass  # Reserved for future pages
@@ -521,7 +521,7 @@ if "scan_results" in st.session_state and st.session_state["scan_results"]:
                         if "data" in stock:
                             try:
                                 fig = make_price_chart(symbol, stock["data"])
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, width='stretch')
                             except Exception as e:
                                 st.error(f"Could not generate chart: {e}")
                     
