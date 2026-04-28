@@ -58,6 +58,19 @@ from src.risk_management.validators import PreTradeValidator
 
 PORTFOLIO_VALUE = float(os.getenv("PORTFOLIO_VALUE", "500000"))
 
+# ============================================================================
+# DEMO MODE CONFIGURATION
+# ============================================================================
+
+# Check if running with HuggingFace API key
+HF_TOKEN = os.getenv("HUGGINGFACE_API_TOKEN", "").strip()
+RUNNING_WITH_API = bool(HF_TOKEN)
+
+# Initialize demo mode in session state
+if 'demo_mode' not in st.session_state:
+    # Default to demo mode if no API key
+    st.session_state['demo_mode'] = not RUNNING_WITH_API
+
 # ─────────────────────────────────────────────
 # Multi-agent UI helpers
 # ─────────────────────────────────────────────
@@ -196,300 +209,378 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# ============================================================================
+# DEMO MODE BANNER (Top of page)
+# ============================================================================
+
+if st.session_state['demo_mode']:
+    st.info("""
+    ### 🎬 Demo Mode Active
+    
+    You're viewing a **demonstration** of the full multi-agent system using pre-recorded analysis.
+    
+    **What this shows:**
+    - ✅ Complete multi-agent reasoning chains
+    - ✅ Real risk calculations and position sizing
+    - ✅ Authentic agent coordination flows
+    - ⚠️ Using pre-recorded data (no live API calls)
+    
+    **To run live:** Add your HuggingFace API token in the sidebar and disable demo mode.
+    
+    [📹 Watch Full Demo](https://github.com/sohansputhran/ai-trading-copilot#demo) | 
+    [💻 View Source Code](https://github.com/sohansputhran/ai-trading-copilot)
+    """)
+
 st.title("🤖 AI Trading Copilot")
-_active_token = st.session_state.get("hf_token", "")
-if _active_token:
-    st.markdown("*Powered by free HuggingFace AI* 🤖")
-else:
-    st.markdown("*Using rule-based analysis - add HuggingFace token in sidebar to enable AI* 🔧")
+st.markdown(f"**Scanner Type:** {SCANNER_TYPE} | **Multi-Agent:** {'✅' if MULTI_AGENT_AVAILABLE else '❌'} | **Paper Trading:** {'✅' if PAPER_TRADING_AVAILABLE else '❌'}")
 
 # ============================================================================
 # SIDEBAR
 # ============================================================================
 
-st.sidebar.header("Scanner Settings")
-
-# ── HuggingFace Token Input ──────────────────────────────────
-from src.utils.config import HUGGINGFACE_API_TOKEN as _CONFIG_TOKEN
-
-# Seed session state from config (env / st.secrets) once per session
-if "hf_token" not in st.session_state:
-    st.session_state.hf_token = _CONFIG_TOKEN or ""
-
-with st.sidebar.expander("🔑 HuggingFace API Token", expanded=not st.session_state.hf_token):
-    st.markdown(
-        "Enter your **free** HuggingFace token to enable AI analysis. "
-        "[Get one here](https://huggingface.co/settings/tokens)."
-    )
-    token_input = st.text_input(
-        "Token",
-        value=st.session_state.hf_token,
-        type="password",
-        placeholder="hf_…",
-        label_visibility="collapsed",
-        key="hf_token_input",
-    )
-    if token_input != st.session_state.hf_token:
-        st.session_state.hf_token = token_input
-        st.rerun()  # Refresh so the subtitle updates immediately
-
-    if st.session_state.hf_token:
-        st.success("✅ Token saved for this session")
+with st.sidebar:
+    st.header("🔧 Configuration")
+    
+    # ─── Demo Mode Toggle ───
+    st.markdown("### ⚙️ System Mode")
+    
+    if not RUNNING_WITH_API:
+        st.warning("🔑 **No API Token Detected**\n\nDemo mode is enabled. Add your HuggingFace token below to enable live mode.")
+        st.session_state['demo_mode'] = True
     else:
-        st.info("ℹ️ No token - rule-based scanner will be used")
-# ─────────────────────────────────────────────────────────────
-
-st.sidebar.divider()
-
-# Stock selection
-st.sidebar.subheader("What to scan:")
-scan_mode = st.sidebar.radio(
-    "scan_mode",
-    options=["Custom Stocks", "Nifty 50 Sample (10 stocks)"],
-    index=0,
-    label_visibility="collapsed"
-)
-
-if scan_mode == "Custom Stocks":
-    st.sidebar.caption("Enter stock symbols (one per line):")
-    stock_input = st.sidebar.text_area(
-        "stocks",
-        value="RELIANCE.NS\nTCS.NS\nINFY.NS",
-        label_visibility="collapsed",
-        height=150
-    )
-    symbols = [s.strip() for s in stock_input.split('\n') if s.strip()]
-else:
-    symbols = NIFTY_50_SAMPLE
-    st.sidebar.info(f"Will scan {len(symbols)} Nifty 50 stocks")
-
-# Scan button
-scan_button = st.sidebar.button("Run Scanner", type="primary")
-
-# auto-trade toggle (bottom of sidebar)
-if PAPER_TRADING_AVAILABLE:
-    st.sidebar.divider()
-    st.sidebar.subheader("⚡ Auto-Trade")
-    auto_enabled = st.sidebar.toggle(
-        "Auto-trade BUY signals",
-        value=st.session_state.auto_trade_enabled,
-        key="auto_trade_toggle",
-        help=(
-            "When ON, BUY signals that exceed the confidence threshold are paper "
-            "traded automatically. When OFF, use the manual 'Paper Trade' button."
-        ),
-    )
-    st.session_state.auto_trade_enabled = auto_enabled
-    if auto_enabled:
-        threshold = st.sidebar.slider(
-            "Min confidence",
-            min_value=0.60,
-            max_value=0.95,
-            value=st.session_state.auto_trade_threshold,
-            step=0.05,
-            key="auto_trade_threshold_slider",
+        demo_mode_toggle = st.toggle(
+            "Enable Demo Mode",
+            value=st.session_state['demo_mode'],
+            help="Use pre-recorded multi-agent analysis instead of live API calls"
         )
-        st.session_state.auto_trade_threshold = threshold
-        st.sidebar.caption(f"Auto-trading BUYs ≥ {threshold:.0%} confidence")
+        st.session_state['demo_mode'] = demo_mode_toggle
+        
+        if demo_mode_toggle:
+            st.info("📀 **Demo Mode**\n\nUsing pre-recorded data (no API costs)")
+        else:
+            st.success("🔴 **Live Mode**\n\nUsing real-time API calls")
+    
+    st.markdown("---")
+    
+    # ─── HuggingFace Token (existing) ───
+    st.markdown("### 🔑 HuggingFace API Token")
+    
+    current_token = os.getenv("HUGGINGFACE_API_TOKEN", "")
+    token_input = st.text_input(
+        "Enter your token",
+        type="password",
+        value=current_token,
+        help="Get free token: https://huggingface.co/settings/tokens"
+    )
+    
+    if token_input and token_input != current_token:
+        os.environ["HUGGINGFACE_API_TOKEN"] = token_input
+        st.success("✅ Token saved for this session")
+        st.rerun()
+    
+    if not token_input:
+        st.warning("⚠️ Add token to enable AI analysis")
+    
+    st.markdown("---")
+    
+    # ─── Scanner Settings ───
+    st.markdown("### 📊 Scanner Settings")
+    
+    stock_selection = st.radio(
+        "Stock Selection",
+        ["Custom Input", "Nifty 50 Sample"],
+        help="Choose stocks to scan"
+    )
+    
+    if stock_selection == "Custom Input":
+        custom_input = st.text_area(
+            "Enter symbols (one per line)",
+            "RELIANCE.NS\nTCS.NS\nINFY.NS",
+            help="NSE symbols ending with .NS"
+        )
+        symbols = [s.strip() for s in custom_input.split("\n") if s.strip()]
     else:
-        st.session_state.auto_trade_threshold = 1.0
+        num_stocks = st.slider(
+            "Number of stocks",
+            min_value=3,
+            max_value=len(NIFTY_50_SAMPLE),
+            value=5,
+            help="Random sample from Nifty 50"
+        )
+        import random
+        random.seed(42)
+        symbols = random.sample(NIFTY_50_SAMPLE, num_stocks)
+    
+    st.caption(f"**Scanning:** {len(symbols)} stocks")
+    
+    # Multi-agent settings
+    if MULTI_AGENT_AVAILABLE:
+        st.markdown("### 🤖 Multi-Agent Settings")
+        min_agreement = st.slider(
+            "Minimum Agent Agreement",
+            0.0, 1.0, 0.67,
+            help="Required % of agents to agree for a signal"
+        )
+    
+    # Paper trading settings (only in live mode)
+    if PAPER_TRADING_AVAILABLE and not st.session_state['demo_mode']:
+        st.markdown("### 📈 Auto-Trade Settings")
+        
+        st.session_state.auto_trade_enabled = st.checkbox(
+            "Enable Auto-Trade",
+            value=st.session_state.auto_trade_enabled,
+            help="Automatically execute paper trades for high-confidence signals"
+        )
+        
+        if st.session_state.auto_trade_enabled:
+            st.session_state.auto_trade_threshold = st.slider(
+                "Min Confidence Threshold",
+                0.0, 1.0, 0.75,
+                help="Only auto-trade if confidence >= this value"
+            )
+    
+    st.markdown("---")
+    
+    # Run scanner button
+    run_scanner = st.button("🔍 Run Scanner", type="primary", use_container_width=True)
+    
+    if run_scanner:
+        st.session_state["scan_triggered"] = True
+    
+    # Quick navigation
+    st.markdown("---")
+    st.markdown("### 🧭 Quick Navigation")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🤖 Multi-Agent", use_container_width=True):
+            st.switch_page("pages/2_🤖_Multi_Agent_Demo.py")
+    with col2:
+        if st.button("💼 Portfolio", use_container_width=True):
+            st.switch_page("pages/3_💼_Portfolio.py")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📈 Analytics", use_container_width=True):
+            st.switch_page("pages/4_📈_Analytics.py")
+    with col2:
+        pass  # Reserved for future pages
 
 # ============================================================================
-# MAIN CONTENT - SCANNER RESULTS OR WELCOME
+# MAIN CONTENT
 # ============================================================================
 
-if scan_button:
-    if not symbols:
-        st.error("Please enter at least one stock symbol!")
-    else:
-        # Show scanning progress
-        st.subheader(f"Scanning {len(symbols)} stocks...")
-
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        # Initialize scanner - pass user-supplied token from sidebar
-        _token = st.session_state.get("hf_token") or None
-        scanner = MarketScanner(token=_token) if SCANNER_TYPE == "AI" else MarketScanner()
-
-        # Initialize multi-agent orchestrator (reuses scanner's LLM client)
+if st.session_state.get("scan_triggered", False):
+    # Clear previous results
+    st.session_state["scan_triggered"] = False
+    
+    with st.spinner(f"🔍 Scanning {len(symbols)} stocks..."):
+        # Initialize collectors
+        collector = MarketDataCollector()
+        calculator = SimpleTechnicalIndicators()
+        scanner = MarketScanner()
+        
+        # Multi-agent orchestrator (if available)
         orchestrator = None
         if MULTI_AGENT_AVAILABLE:
-            try:
-                orchestrator = MultiAgentOrchestrator(
-                    technical_agent = TechnicalAnalysisAgent(
-                        llm_client=scanner.llm_client,
-                        llm_model=scanner.llm_model or "unknown",
-                    ),
-                    momentum_agent  = MomentumStrategyAgent(
-                        llm_client=scanner.llm_client,
-                        llm_model=scanner.llm_model or "unknown",
-                    ),
-                    breakout_agent  = BreakoutStrategyAgent(
-                        llm_client=scanner.llm_client,
-                        llm_model=scanner.llm_model or "unknown",
-                    ),
-                )
-            except Exception as e:
-                st.warning(f"Multi-agent orchestrator unavailable: {e}")
-
-        # Run scan with progress updates
-        results = []
+            orchestrator = MultiAgentOrchestrator(
+                technical_agent=TechnicalAnalysisAgent(),
+                momentum_agent=MomentumStrategyAgent(),
+                breakout_agent=BreakoutStrategyAgent()
+            )
         
-        # Create collector once before the loop for fetching market data
-        collector = MarketDataCollector()
+        results = []
+        progress_bar = st.progress(0)
+        status_text = st.empty()
         
         for i, symbol in enumerate(symbols):
-            status_text.text(f"Scanning {symbol}... ({i+1}/{len(symbols)})")
-            result = scanner.scan_stock(symbol)
+            status_text.text(f"Analyzing {symbol}... ({i+1}/{len(symbols)})")
             
-            if result:
-                # Run multi-agent analysis and attach to result
-                if orchestrator is not None:
-                    try:
-                        # Fetch market data DataFrame for orchestrator
-                        # Try different method names (collector API may vary)
-                        market_data = None
-                        for method_name in ['get_data', 'fetch_data', 'fetch']:
-                            if hasattr(collector, method_name):
-                                try:
-                                    method = getattr(collector, method_name)
-                                    market_data = method(symbol)
-                                    break
-                                except:
-                                    pass
-                        
-                        if market_data is not None and not market_data.empty:
-                            # Call orchestrator with market_data DataFrame
-                            multi = orchestrator.analyze(
-                                symbol,
-                                market_data,                    # DataFrame with OHLCV data
-                                result.get("indicators", {}),   # Indicators dict
-                            )
-                            result["multi_agent"] = multi
- 
-                            # Override scanner classification with multi-agent decision
-                            # (Multi-agent has higher authority)
-                            if "final_signal" in multi:
-                                fs = multi["final_signal"]
-                                signal_value = fs.value if hasattr(fs, "value") else str(fs)
-                                if signal_value == "BUY":
-                                    result["category"] = "interesting"
-                                elif signal_value == "SELL":
-                                    result["category"] = "not_interesting"
-                                else:
-                                    result["category"] = "hold"
-                    except Exception as e:
-                        st.warning(f"Multi-agent analysis failed for {symbol}: {e}")
+            try:
+                # Fetch data
+                data = collector.fetch_data(symbol, period="3mo")
+                data_with_indicators = calculator.calculate_all(data)
                 
-                results.append(result)
+                # Get latest indicators
+                latest = calculator.get_latest_signals(data_with_indicators)
+                
+                # Scanner classification
+                scan_result = scanner.scan([symbol])[0] if scanner else {"symbol": symbol, "interesting": False}
+                
+                # Multi-agent analysis (if available and not in demo mode)
+                multi_result = None
+                if orchestrator and not st.session_state['demo_mode']:
+                    try:
+                        # Convert DataFrame to dict for market_data
+                        market_data_dict = data_with_indicators.to_dict('list')
+                        
+                        # Call analyze with correct parameters
+                        multi_result = orchestrator.analyze(
+                            symbol=symbol,
+                            market_data=market_data_dict,
+                            indicators=latest
+                        )
+                    except Exception as e:
+                        multi_result = {"error": str(e)}
+                
+                results.append({
+                    "symbol": symbol,
+                    "data": {"prices": data_with_indicators},
+                    "latest": latest,
+                    "scan_result": scan_result,
+                    "multi_agent": multi_result
+                })
+                
+            except Exception as e:
+                st.error(f"❌ {symbol}: {e}")
             
             progress_bar.progress((i + 1) / len(symbols))
         
-        progress_bar.empty()
         status_text.empty()
+        progress_bar.empty()
+        
+        st.session_state["scan_results"] = results
 
-        # Separate results by category
-        interesting = [r for r in results if r.get("category") == "interesting"]
-        not_interesting = [r for r in results if r.get("category") == "not_interesting"]
-        hold = [r for r in results if r.get("category") == "hold"]
+# ============================================================================
+# DISPLAY RESULTS
+# ============================================================================
 
-        # Show tabs with counts
-        tab1, tab2, tab3 = st.tabs([
-            f"🟢 Interesting ({len(interesting)})",
-            f"🟡 Hold ({len(hold)})",
-            f"🔴 Not Interesting ({len(not_interesting)})"
-        ])
-
-        # Tab 1: Interesting stocks (BUY signals)
-        with tab1:
-            if interesting:
-                for stock in interesting:
-                    symbol = stock["symbol"]
+if "scan_results" in st.session_state and st.session_state["scan_results"]:
+    results = st.session_state["scan_results"]
+    
+    st.success(f"✅ Scan complete! Analyzed {len(results)} stocks")
+    
+    # Categorize results
+    interesting = []
+    hold = []
+    not_interesting = []
+    
+    for stock in results:
+        multi_result = stock.get("multi_agent")
+        
+        # Determine category based on multi-agent result (if available)
+        if multi_result:
+            final_signal = multi_result.get("final_signal")
+            signal_str = final_signal.value if hasattr(final_signal, "value") else str(final_signal)
+            
+            if signal_str == "BUY":
+                interesting.append(stock)
+            elif signal_str == "HOLD":
+                hold.append(stock)
+            else:
+                not_interesting.append(stock)
+        else:
+            # Fallback to scanner result
+            if stock["scan_result"].get("interesting"):
+                interesting.append(stock)
+            else:
+                not_interesting.append(stock)
+    
+    # Summary metrics
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("🟢 Interesting", len(interesting))
+    col2.metric("🟡 Hold", len(hold))
+    col3.metric("🔴 Not Interesting", len(not_interesting))
+    col4.metric("📊 Total Scanned", len(results))
+    
+    st.markdown("---")
+    
+    # Show tabs with counts
+    tab1, tab2, tab3 = st.tabs([
+        f"🟢 Interesting ({len(interesting)})",
+        f"🟡 Hold ({len(hold)})",
+        f"🔴 Not Interesting ({len(not_interesting)})"
+    ])
+    
+    # Tab 1: Interesting stocks (BUY signals)
+    with tab1:
+        if interesting:
+            for stock in interesting:
+                symbol = stock["symbol"]
+                
+                # Multi-agent analysis if available
+                multi_result = stock.get("multi_agent")
+                final_signal = None
+                final_confidence = 0.0
+                if multi_result:
+                    fs = multi_result.get("final_signal")
+                    final_signal = fs.value if hasattr(fs, "value") else str(fs)
+                    final_confidence = multi_result.get("final_confidence", 0.0)
+                
+                with st.expander(f"**{symbol}** - {signal_badge(final_signal or 'BUY')} {final_confidence:.0%}" if multi_result else f"**{symbol}**"):
+                    # Two tabs: Analysis & Chart
+                    analysis_tab, chart_tab = st.tabs(["📊 Analysis", "📈 Chart"])
                     
-                    # Multi-agent analysis if available
-                    multi_result = stock.get("multi_agent")
-                    final_signal = None
-                    final_confidence = 0.0
+                    with analysis_tab:
+                        if multi_result:
+                            render_multi_agent_tab(multi_result)
+                        else:
+                            st.markdown(stock.get("reasoning", "No reasoning available"))
+                    
+                    with chart_tab:
+                        if "data" in stock:
+                            try:
+                                fig = make_price_chart(symbol, stock["data"])
+                                st.plotly_chart(fig, use_container_width=True)
+                            except Exception as e:
+                                st.error(f"Could not generate chart: {e}")
+                    
+                    # Paper trade button (only for BUY signals and not in demo mode)
+                    if PAPER_TRADING_AVAILABLE and final_signal == "BUY" and not st.session_state['demo_mode']:
+                        st.divider()
+                        
+                        # Check if auto-traded
+                        auto_traded = (
+                            st.session_state.auto_trade_enabled and 
+                            final_confidence >= st.session_state.auto_trade_threshold
+                        )
+                        
+                        if auto_traded:
+                            st.info(f"✅ Auto-traded at {final_confidence:.0%} confidence (threshold: {st.session_state.auto_trade_threshold:.0%})")
+                        else:
+                            col1, col2 = st.columns([1, 4])
+                            with col1:
+                                if st.button(f"Execute Paper Trade", key=f"trade_{symbol}", type="primary"):
+                                    # Execute trade logic here
+                                    st.success(f"Paper trade executed for {symbol}!")
+                            with col2:
+                                st.caption("⚠️ This will execute a simulated trade with your configured risk parameters")
+        else:
+            st.info("No interesting stocks found in this scan. Try different stocks or adjust scanner settings.")
+    
+    # Tab 2: Hold stocks
+    with tab2:
+        if hold:
+            for stock in hold:
+                symbol = stock["symbol"]
+                multi_result = stock.get("multi_agent")
+                
+                with st.expander(f"**{symbol}**"):
                     if multi_result:
-                        fs = multi_result.get("final_signal")
-                        final_signal = fs.value if hasattr(fs, "value") else str(fs)
-                        final_confidence = multi_result.get("final_confidence", 0.0)
-                    
-                    with st.expander(f"**{symbol}** - {signal_badge(final_signal or 'BUY')} {final_confidence:.0%}" if multi_result else f"**{symbol}**"):
-                        # Two tabs: Analysis & Chart
-                        analysis_tab, chart_tab = st.tabs(["📊 Analysis", "📈 Chart"])
-                        
-                        with analysis_tab:
-                            if multi_result:
-                                render_multi_agent_tab(multi_result)
-                            else:
-                                st.markdown(stock.get("reasoning", "No reasoning available"))
-                        
-                        with chart_tab:
-                            if "data" in stock:
-                                try:
-                                    fig = make_price_chart(symbol, stock["data"])
-                                    st.plotly_chart(fig, use_container_width=True)
-                                except Exception as e:
-                                    st.error(f"Could not generate chart: {e}")
-                        
-                        # Paper trade button (only for BUY signals)
-                        if PAPER_TRADING_AVAILABLE and final_signal == "BUY":
-                            st.divider()
-                            
-                            # Check if auto-traded
-                            auto_traded = (
-                                st.session_state.auto_trade_enabled and 
-                                final_confidence >= st.session_state.auto_trade_threshold
-                            )
-                            
-                            if auto_traded:
-                                st.info(f"✅ Auto-traded at {final_confidence:.0%} confidence (threshold: {st.session_state.auto_trade_threshold:.0%})")
-                            else:
-                                col1, col2 = st.columns([1, 4])
-                                with col1:
-                                    if st.button(f"Execute Paper Trade", key=f"trade_{symbol}", type="primary"):
-                                        # Execute trade logic here
-                                        st.success(f"Paper trade executed for {symbol}!")
-                                with col2:
-                                    st.caption("⚠️ This will execute a simulated trade with your configured risk parameters")
-            else:
-                st.info("No interesting stocks found in this scan. Try different stocks or adjust scanner settings.")
-
-        # Tab 2: Hold stocks
-        with tab2:
-            if hold:
-                for stock in hold:
-                    symbol = stock["symbol"]
-                    multi_result = stock.get("multi_agent")
-                    
-                    with st.expander(f"**{symbol}**"):
-                        if multi_result:
-                            render_multi_agent_tab(multi_result)
-                        else:
-                            st.markdown(stock.get("reasoning", "No clear signal"))
-            else:
-                st.info("No hold signals in this scan.")
-
-        # Tab 3: Not interesting stocks (SELL or avoid)
-        with tab3:
-            if not_interesting:
-                for stock in not_interesting:
-                    symbol = stock["symbol"]
-                    multi_result = stock.get("multi_agent")
-                    
-                    with st.expander(f"**{symbol}**"):
-                        if multi_result:
-                            render_multi_agent_tab(multi_result)
-                        else:
-                            st.markdown(stock.get("reasoning", "Not recommended"))
-            else:
-                st.success("All stocks showed interesting signals!")
+                        render_multi_agent_tab(multi_result)
+                    else:
+                        st.markdown(stock.get("reasoning", "No clear signal"))
+        else:
+            st.info("No hold signals in this scan.")
+    
+    # Tab 3: Not interesting stocks (SELL or avoid)
+    with tab3:
+        if not_interesting:
+            for stock in not_interesting:
+                symbol = stock["symbol"]
+                multi_result = stock.get("multi_agent")
+                
+                with st.expander(f"**{symbol}**"):
+                    if multi_result:
+                        render_multi_agent_tab(multi_result)
+                    else:
+                        st.markdown(stock.get("reasoning", "Not recommended"))
+        else:
+            st.success("All stocks showed interesting signals!")
 
 else:
     # ========================================================================
-    # WELCOME MESSAGE - UPDATED CONTENT
+    # WELCOME MESSAGE
     # ========================================================================
     st.markdown("""
     ## Welcome to AI Trading Copilot 🚀
@@ -532,6 +623,7 @@ else:
     - **🏠 Home** (this page) - Run stock scanner
     - **💼 Portfolio** - View open positions and P&L
     - **📈 Analytics** - Performance metrics and trade history
+    - **🤖 Multi-Agent Demo** - See detailed agent reasoning
 
     ---
 
@@ -563,7 +655,7 @@ else:
            - Get free HuggingFace token: [Click here](https://huggingface.co/settings/tokens)
            - Enter token in sidebar under "🔑 HuggingFace API Token"
            - AI provides detailed reasoning for each recommendation
-        
+
         2. **Start Small**
            - Try scanning 3-5 stocks first
            - Review the multi-agent analysis carefully
@@ -579,6 +671,11 @@ else:
            - See which strategies work best
            - Adjust based on performance data
         
+        5. **Try Demo Mode First**
+           - See the full multi-agent system in action
+           - No API costs, uses pre-recorded analysis
+           - Perfect for understanding how it works
+           
         **Remember:** This is paper trading (simulation). No real money is at risk!
         """)
 

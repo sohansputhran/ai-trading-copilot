@@ -815,7 +815,7 @@ with action_col1:
     st.caption("Find new trading opportunities")
 
 with action_col2:
-    st.page_link("pages/3_analytics.py", label="📈 Analytics", icon="📉")
+    st.page_link("pages/3_Analytics.py", label="📈 Analytics", icon="📉")
     st.caption("View historical performance")
 
 with action_col3:

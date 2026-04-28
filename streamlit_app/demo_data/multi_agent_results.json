@@ -1,0 +1,636 @@
+[
+  {
+    "symbol": "RELIANCE.NS",
+    "timestamp": "2026-04-28T00:46:51.289814",
+    "scanner_reasoning": {
+      "signals": [],
+      "reasoning": "Initial screening based on technical indicators",
+      "indicators": {
+        "rsi": 55.18637809725734,
+        "macd": -11.060040784580451,
+        "volume_ratio": 1.1937277545255816
+      }
+    },
+    "technical_analysis": {
+      "detailed_analysis": "FINAL DECISION: HOLD (confidence: 16%, agent agreement: 33%) [Overridden to HOLD: confidence=0.16 < min=0.6]\n\nAGENT BREAKDOWN:\n  \u2717 TECHNICAL_ANALYSIS: BUY (50%) \u2014 Bullish oscillator signal. RSI=55.2 (above midpoint, mild bull bias); MACD (-11.06) above signal (-12.38) \u2014 bullish. Sco...\n  \u2717 MOMENTUM_STRATEGY: SELL (52%) \u2014 Bearish momentum signal. EMA20 (1354.0) below EMA50 (1372.1) \u2014 bearish cross; ADX=17.0 (developing trend). Score: 2.6/5....\n  \u2713 BREAKOUT_STRATEGY: HOLD (20%) \u2014 No breakout setup \u2014 volume 1.2x, price at 100% of resistance. Waiting for setup....\n\nWARNINGS:\n  \u26a0 [breakout_strategy] Price near resistance but volume only 1.2x \u2014 low conviction, likely false breakout",
+      "patterns": [],
+      "support_levels": [],
+      "resistance_levels": [],
+      "confidence": 0.16
+    },
+    "risk_assessment": {
+      "position_size_pct": 0.03,
+      "position_size_rupees": 15000,
+      "risk_per_trade": 0.015,
+      "reward_risk_ratio": 2.0,
+      "validation_checks": [
+        {
+          "rule": "Max position size (5% of portfolio)",
+          "passed": true,
+          "status": "3.0% is within 5% limit"
+        },
+        {
+          "rule": "Max risk per trade (2% of portfolio)",
+          "passed": true,
+          "status": "1.5% is within 2% limit"
+        },
+        {
+          "rule": "Portfolio constraints",
+          "passed": true,
+          "status": "All risk limits respected"
+        }
+      ],
+      "portfolio_value": 500000,
+      "entry_price": 0.0,
+      "stop_loss": 0.0,
+      "risk_per_share": 0.0,
+      "quantity": 0
+    },
+    "agent_coordination": [
+      {
+        "from_agent": "Scanner Agent",
+        "to_agent": "Orchestrator",
+        "message": "Found RELIANCE.NS as potential candidate",
+        "timestamp": "2026-04-28T00:46:51.289814"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Technical Agent",
+        "message": "Requesting deep technical analysis",
+        "timestamp": "2026-04-28T00:46:51.289814"
+      },
+      {
+        "from_agent": "Technical Agent",
+        "to_agent": "Orchestrator",
+        "message": "Analysis complete",
+        "timestamp": "2026-04-28T00:46:51.289814"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Momentum Agent",
+        "message": "Requesting momentum analysis",
+        "timestamp": "2026-04-28T00:46:51.289814"
+      },
+      {
+        "from_agent": "Momentum Agent",
+        "to_agent": "Orchestrator",
+        "message": "Momentum analysis complete",
+        "timestamp": "2026-04-28T00:46:51.289814"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Breakout Agent",
+        "message": "Requesting breakout analysis",
+        "timestamp": "2026-04-28T00:46:51.289814"
+      },
+      {
+        "from_agent": "Breakout Agent",
+        "to_agent": "Orchestrator",
+        "message": "Breakout analysis complete",
+        "timestamp": "2026-04-28T00:46:51.289814"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Aggregator",
+        "message": "Aggregating all agent signals",
+        "timestamp": "2026-04-28T00:46:51.289814"
+      }
+    ],
+    "orchestrator_reasoning": "FINAL DECISION: HOLD (confidence: 16%, agent agreement: 33%) [Overridden to HOLD: confidence=0.16 < min=0.6]\n\nAGENT BREAKDOWN:\n  \u2717 TECHNICAL_ANALYSIS: BUY (50%) \u2014 Bullish oscillator signal. RSI=55.2 (above midpoint, mild bull bias); MACD (-11.06) above signal (-12.38) \u2014 bullish. Sco...\n  \u2717 MOMENTUM_STRATEGY: SELL (52%) \u2014 Bearish momentum signal. EMA20 (1354.0) below EMA50 (1372.1) \u2014 bearish cross; ADX=17.0 (developing trend). Score: 2.6/5....\n  \u2713 BREAKOUT_STRATEGY: HOLD (20%) \u2014 No breakout setup \u2014 volume 1.2x, price at 100% of resistance. Waiting for setup....\n\nWARNINGS:\n  \u26a0 [breakout_strategy] Price near resistance but volume only 1.2x \u2014 low conviction, likely false breakout",
+    "final_decision": "HOLD",
+    "confidence_score": 0.16,
+    "agent_agreement": 0.3333333333333333,
+    "errors": [],
+    "agent_analyses": [
+      {
+        "agent_name": "technical_analysis",
+        "signal": "BUY",
+        "confidence": 0.5,
+        "reasoning": "Bullish oscillator signal. RSI=55.2 (above midpoint, mild bull bias); MACD (-11.06) above signal (-12.38) \u2014 bullish. Score: 2.0/4.0",
+        "warnings": []
+      },
+      {
+        "agent_name": "momentum_strategy",
+        "signal": "SELL",
+        "confidence": 0.525,
+        "reasoning": "Bearish momentum signal. EMA20 (1354.0) below EMA50 (1372.1) \u2014 bearish cross; ADX=17.0 (developing trend). Score: 2.6/5.0",
+        "warnings": []
+      },
+      {
+        "agent_name": "breakout_strategy",
+        "signal": "HOLD",
+        "confidence": 0.2,
+        "reasoning": "No breakout setup \u2014 volume 1.2x, price at 100% of resistance. Waiting for setup.",
+        "warnings": [
+          "Price near resistance but volume only 1.2x \u2014 low conviction, likely false breakout"
+        ]
+      }
+    ]
+  },
+  {
+    "symbol": "TCS.NS",
+    "timestamp": "2026-04-28T00:46:51.535061",
+    "scanner_reasoning": {
+      "signals": [],
+      "reasoning": "Initial screening based on technical indicators",
+      "indicators": {
+        "rsi": 43.438988954588496,
+        "macd": -7.961609690064961,
+        "volume_ratio": 1.2395572686499092
+      }
+    },
+    "technical_analysis": {
+      "detailed_analysis": "FINAL DECISION: HOLD (confidence: 40%, agent agreement: 67%) [Overridden to HOLD: confidence=0.40 < min=0.6]\n\nAGENT BREAKDOWN:\n  \u2713 TECHNICAL_ANALYSIS: BUY (38%) \u2014 Bullish oscillator signal. MACD (-7.96) above signal (-10.52) \u2014 bullish. Score: 1.5/4.0...\n  \u2717 MOMENTUM_STRATEGY: SELL (67%) \u2014 Bearish momentum signal. EMA20 (2515.7) below EMA50 (2604.7) \u2014 bearish cross; ADX=29.2 (developing trend). Score: 3.3/5....\n  \u2713 BREAKOUT_STRATEGY: BUY (50%) \u2014 Bullish breakout signal. Volume 1.2x average (moderate interest); Price (nan) at resistance (nan) \u2014 breakout imminent. S...",
+      "patterns": [],
+      "support_levels": [],
+      "resistance_levels": [],
+      "confidence": 0.403
+    },
+    "risk_assessment": {
+      "position_size_pct": 0.03,
+      "position_size_rupees": 15000,
+      "risk_per_trade": 0.015,
+      "reward_risk_ratio": 2.0,
+      "validation_checks": [
+        {
+          "rule": "Max position size (5% of portfolio)",
+          "passed": true,
+          "status": "3.0% is within 5% limit"
+        },
+        {
+          "rule": "Max risk per trade (2% of portfolio)",
+          "passed": true,
+          "status": "1.5% is within 2% limit"
+        },
+        {
+          "rule": "Portfolio constraints",
+          "passed": true,
+          "status": "All risk limits respected"
+        }
+      ],
+      "portfolio_value": 500000,
+      "entry_price": 0.0,
+      "stop_loss": 0.0,
+      "risk_per_share": 0.0,
+      "quantity": 0
+    },
+    "agent_coordination": [
+      {
+        "from_agent": "Scanner Agent",
+        "to_agent": "Orchestrator",
+        "message": "Found TCS.NS as potential candidate",
+        "timestamp": "2026-04-28T00:46:51.535061"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Technical Agent",
+        "message": "Requesting deep technical analysis",
+        "timestamp": "2026-04-28T00:46:51.535061"
+      },
+      {
+        "from_agent": "Technical Agent",
+        "to_agent": "Orchestrator",
+        "message": "Analysis complete",
+        "timestamp": "2026-04-28T00:46:51.535061"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Momentum Agent",
+        "message": "Requesting momentum analysis",
+        "timestamp": "2026-04-28T00:46:51.535061"
+      },
+      {
+        "from_agent": "Momentum Agent",
+        "to_agent": "Orchestrator",
+        "message": "Momentum analysis complete",
+        "timestamp": "2026-04-28T00:46:51.535061"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Breakout Agent",
+        "message": "Requesting breakout analysis",
+        "timestamp": "2026-04-28T00:46:51.535061"
+      },
+      {
+        "from_agent": "Breakout Agent",
+        "to_agent": "Orchestrator",
+        "message": "Breakout analysis complete",
+        "timestamp": "2026-04-28T00:46:51.535061"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Aggregator",
+        "message": "Aggregating all agent signals",
+        "timestamp": "2026-04-28T00:46:51.535061"
+      }
+    ],
+    "orchestrator_reasoning": "FINAL DECISION: HOLD (confidence: 40%, agent agreement: 67%) [Overridden to HOLD: confidence=0.40 < min=0.6]\n\nAGENT BREAKDOWN:\n  \u2713 TECHNICAL_ANALYSIS: BUY (38%) \u2014 Bullish oscillator signal. MACD (-7.96) above signal (-10.52) \u2014 bullish. Score: 1.5/4.0...\n  \u2717 MOMENTUM_STRATEGY: SELL (67%) \u2014 Bearish momentum signal. EMA20 (2515.7) below EMA50 (2604.7) \u2014 bearish cross; ADX=29.2 (developing trend). Score: 3.3/5....\n  \u2713 BREAKOUT_STRATEGY: BUY (50%) \u2014 Bullish breakout signal. Volume 1.2x average (moderate interest); Price (nan) at resistance (nan) \u2014 breakout imminent. S...",
+    "final_decision": "HOLD",
+    "confidence_score": 0.403,
+    "agent_agreement": 0.6666666666666666,
+    "errors": [],
+    "agent_analyses": [
+      {
+        "agent_name": "technical_analysis",
+        "signal": "BUY",
+        "confidence": 0.375,
+        "reasoning": "Bullish oscillator signal. MACD (-7.96) above signal (-10.52) \u2014 bullish. Score: 1.5/4.0",
+        "warnings": []
+      },
+      {
+        "agent_name": "momentum_strategy",
+        "signal": "SELL",
+        "confidence": 0.67,
+        "reasoning": "Bearish momentum signal. EMA20 (2515.7) below EMA50 (2604.7) \u2014 bearish cross; ADX=29.2 (developing trend). Score: 3.3/5.0",
+        "warnings": []
+      },
+      {
+        "agent_name": "breakout_strategy",
+        "signal": "BUY",
+        "confidence": 0.5,
+        "reasoning": "Bullish breakout signal. Volume 1.2x average (moderate interest); Price (nan) at resistance (nan) \u2014 breakout imminent. Score: 2.5/5.0",
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "symbol": "INFY.NS",
+    "timestamp": "2026-04-28T00:46:51.891687",
+    "scanner_reasoning": {
+      "signals": [],
+      "reasoning": "Initial screening based on technical indicators",
+      "indicators": {
+        "rsi": 26.133484922035976,
+        "macd": -20.483612939358636,
+        "volume_ratio": 1.2983739373234517
+      }
+    },
+    "technical_analysis": {
+      "detailed_analysis": "FINAL DECISION: HOLD (confidence: 45%, agent agreement: 67%) [Overridden to HOLD: confidence=0.45 < min=0.6]\n\nAGENT BREAKDOWN:\n  \u2713 TECHNICAL_ANALYSIS: BUY (50%) \u2014 Bullish oscillator signal. RSI=26.1 (oversold, below 30.0); MACD (-20.48) below signal (-13.59) \u2014 bearish. Score: 2.0/4....\n  \u2717 MOMENTUM_STRATEGY: SELL (71%) \u2014 Bearish momentum signal. EMA20 (1282.1) below EMA50 (1341.4) \u2014 bearish cross; ADX=32.8 (developing trend). Score: 3.6/5....\n  \u2713 BREAKOUT_STRATEGY: BUY (50%) \u2014 Bullish breakout signal. Volume 1.3x average (moderate interest); Price (nan) at resistance (nan) \u2014 breakout imminent. S...",
+      "patterns": [],
+      "support_levels": [],
+      "resistance_levels": [],
+      "confidence": 0.45
+    },
+    "risk_assessment": {
+      "position_size_pct": 0.03,
+      "position_size_rupees": 15000,
+      "risk_per_trade": 0.015,
+      "reward_risk_ratio": 2.0,
+      "validation_checks": [
+        {
+          "rule": "Max position size (5% of portfolio)",
+          "passed": true,
+          "status": "3.0% is within 5% limit"
+        },
+        {
+          "rule": "Max risk per trade (2% of portfolio)",
+          "passed": true,
+          "status": "1.5% is within 2% limit"
+        },
+        {
+          "rule": "Portfolio constraints",
+          "passed": true,
+          "status": "All risk limits respected"
+        }
+      ],
+      "portfolio_value": 500000,
+      "entry_price": 0.0,
+      "stop_loss": 0.0,
+      "risk_per_share": 0.0,
+      "quantity": 0
+    },
+    "agent_coordination": [
+      {
+        "from_agent": "Scanner Agent",
+        "to_agent": "Orchestrator",
+        "message": "Found INFY.NS as potential candidate",
+        "timestamp": "2026-04-28T00:46:51.891687"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Technical Agent",
+        "message": "Requesting deep technical analysis",
+        "timestamp": "2026-04-28T00:46:51.891687"
+      },
+      {
+        "from_agent": "Technical Agent",
+        "to_agent": "Orchestrator",
+        "message": "Analysis complete",
+        "timestamp": "2026-04-28T00:46:51.891687"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Momentum Agent",
+        "message": "Requesting momentum analysis",
+        "timestamp": "2026-04-28T00:46:51.891687"
+      },
+      {
+        "from_agent": "Momentum Agent",
+        "to_agent": "Orchestrator",
+        "message": "Momentum analysis complete",
+        "timestamp": "2026-04-28T00:46:51.891687"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Breakout Agent",
+        "message": "Requesting breakout analysis",
+        "timestamp": "2026-04-28T00:46:51.891687"
+      },
+      {
+        "from_agent": "Breakout Agent",
+        "to_agent": "Orchestrator",
+        "message": "Breakout analysis complete",
+        "timestamp": "2026-04-28T00:46:51.891687"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Aggregator",
+        "message": "Aggregating all agent signals",
+        "timestamp": "2026-04-28T00:46:51.891687"
+      }
+    ],
+    "orchestrator_reasoning": "FINAL DECISION: HOLD (confidence: 45%, agent agreement: 67%) [Overridden to HOLD: confidence=0.45 < min=0.6]\n\nAGENT BREAKDOWN:\n  \u2713 TECHNICAL_ANALYSIS: BUY (50%) \u2014 Bullish oscillator signal. RSI=26.1 (oversold, below 30.0); MACD (-20.48) below signal (-13.59) \u2014 bearish. Score: 2.0/4....\n  \u2717 MOMENTUM_STRATEGY: SELL (71%) \u2014 Bearish momentum signal. EMA20 (1282.1) below EMA50 (1341.4) \u2014 bearish cross; ADX=32.8 (developing trend). Score: 3.6/5....\n  \u2713 BREAKOUT_STRATEGY: BUY (50%) \u2014 Bullish breakout signal. Volume 1.3x average (moderate interest); Price (nan) at resistance (nan) \u2014 breakout imminent. S...",
+    "final_decision": "HOLD",
+    "confidence_score": 0.45,
+    "agent_agreement": 0.6666666666666666,
+    "errors": [],
+    "agent_analyses": [
+      {
+        "agent_name": "technical_analysis",
+        "signal": "BUY",
+        "confidence": 0.5,
+        "reasoning": "Bullish oscillator signal. RSI=26.1 (oversold, below 30.0); MACD (-20.48) below signal (-13.59) \u2014 bearish. Score: 2.0/4.0",
+        "warnings": []
+      },
+      {
+        "agent_name": "momentum_strategy",
+        "signal": "SELL",
+        "confidence": 0.713,
+        "reasoning": "Bearish momentum signal. EMA20 (1282.1) below EMA50 (1341.4) \u2014 bearish cross; ADX=32.8 (developing trend). Score: 3.6/5.0",
+        "warnings": []
+      },
+      {
+        "agent_name": "breakout_strategy",
+        "signal": "BUY",
+        "confidence": 0.5,
+        "reasoning": "Bullish breakout signal. Volume 1.3x average (moderate interest); Price (nan) at resistance (nan) \u2014 breakout imminent. Score: 2.5/5.0",
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "symbol": "HDFCBANK.NS",
+    "timestamp": "2026-04-28T00:46:52.005616",
+    "scanner_reasoning": {
+      "signals": [],
+      "reasoning": "Initial screening based on technical indicators",
+      "indicators": {
+        "rsi": 53.96961291559548,
+        "macd": -9.40929596414719,
+        "volume_ratio": 0.3607810273416085
+      }
+    },
+    "technical_analysis": {
+      "detailed_analysis": "FINAL DECISION: HOLD (confidence: 16%, agent agreement: 33%) [Overridden to HOLD: confidence=0.16 < min=0.6]\n\nAGENT BREAKDOWN:\n  \u2717 TECHNICAL_ANALYSIS: BUY (50%) \u2014 Bullish oscillator signal. RSI=54.0 (above midpoint, mild bull bias); MACD (-9.41) above signal (-12.72) \u2014 bullish. Scor...\n  \u2717 MOMENTUM_STRATEGY: SELL (53%) \u2014 Bearish momentum signal. EMA20 (797.5) below EMA50 (829.0) \u2014 bearish cross; ADX=17.4 (developing trend). Score: 2.6/5.0...\n  \u2713 BREAKOUT_STRATEGY: HOLD (20%) \u2014 No breakout setup \u2014 volume 0.4x, price at 100% of resistance. Waiting for setup....\n\nWARNINGS:\n  \u26a0 [breakout_strategy] Price near resistance but volume only 0.4x \u2014 low conviction, likely false breakout",
+      "patterns": [],
+      "support_levels": [],
+      "resistance_levels": [],
+      "confidence": 0.16
+    },
+    "risk_assessment": {
+      "position_size_pct": 0.03,
+      "position_size_rupees": 15000,
+      "risk_per_trade": 0.015,
+      "reward_risk_ratio": 2.0,
+      "validation_checks": [
+        {
+          "rule": "Max position size (5% of portfolio)",
+          "passed": true,
+          "status": "3.0% is within 5% limit"
+        },
+        {
+          "rule": "Max risk per trade (2% of portfolio)",
+          "passed": true,
+          "status": "1.5% is within 2% limit"
+        },
+        {
+          "rule": "Portfolio constraints",
+          "passed": true,
+          "status": "All risk limits respected"
+        }
+      ],
+      "portfolio_value": 500000,
+      "entry_price": 0.0,
+      "stop_loss": 0.0,
+      "risk_per_share": 0.0,
+      "quantity": 0
+    },
+    "agent_coordination": [
+      {
+        "from_agent": "Scanner Agent",
+        "to_agent": "Orchestrator",
+        "message": "Found HDFCBANK.NS as potential candidate",
+        "timestamp": "2026-04-28T00:46:52.005616"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Technical Agent",
+        "message": "Requesting deep technical analysis",
+        "timestamp": "2026-04-28T00:46:52.005616"
+      },
+      {
+        "from_agent": "Technical Agent",
+        "to_agent": "Orchestrator",
+        "message": "Analysis complete",
+        "timestamp": "2026-04-28T00:46:52.005616"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Momentum Agent",
+        "message": "Requesting momentum analysis",
+        "timestamp": "2026-04-28T00:46:52.005616"
+      },
+      {
+        "from_agent": "Momentum Agent",
+        "to_agent": "Orchestrator",
+        "message": "Momentum analysis complete",
+        "timestamp": "2026-04-28T00:46:52.005616"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Breakout Agent",
+        "message": "Requesting breakout analysis",
+        "timestamp": "2026-04-28T00:46:52.005616"
+      },
+      {
+        "from_agent": "Breakout Agent",
+        "to_agent": "Orchestrator",
+        "message": "Breakout analysis complete",
+        "timestamp": "2026-04-28T00:46:52.005616"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Aggregator",
+        "message": "Aggregating all agent signals",
+        "timestamp": "2026-04-28T00:46:52.005616"
+      }
+    ],
+    "orchestrator_reasoning": "FINAL DECISION: HOLD (confidence: 16%, agent agreement: 33%) [Overridden to HOLD: confidence=0.16 < min=0.6]\n\nAGENT BREAKDOWN:\n  \u2717 TECHNICAL_ANALYSIS: BUY (50%) \u2014 Bullish oscillator signal. RSI=54.0 (above midpoint, mild bull bias); MACD (-9.41) above signal (-12.72) \u2014 bullish. Scor...\n  \u2717 MOMENTUM_STRATEGY: SELL (53%) \u2014 Bearish momentum signal. EMA20 (797.5) below EMA50 (829.0) \u2014 bearish cross; ADX=17.4 (developing trend). Score: 2.6/5.0...\n  \u2713 BREAKOUT_STRATEGY: HOLD (20%) \u2014 No breakout setup \u2014 volume 0.4x, price at 100% of resistance. Waiting for setup....\n\nWARNINGS:\n  \u26a0 [breakout_strategy] Price near resistance but volume only 0.4x \u2014 low conviction, likely false breakout",
+    "final_decision": "HOLD",
+    "confidence_score": 0.16,
+    "agent_agreement": 0.3333333333333333,
+    "errors": [],
+    "agent_analyses": [
+      {
+        "agent_name": "technical_analysis",
+        "signal": "BUY",
+        "confidence": 0.5,
+        "reasoning": "Bullish oscillator signal. RSI=54.0 (above midpoint, mild bull bias); MACD (-9.41) above signal (-12.72) \u2014 bullish. Score: 2.0/4.0",
+        "warnings": []
+      },
+      {
+        "agent_name": "momentum_strategy",
+        "signal": "SELL",
+        "confidence": 0.528,
+        "reasoning": "Bearish momentum signal. EMA20 (797.5) below EMA50 (829.0) \u2014 bearish cross; ADX=17.4 (developing trend). Score: 2.6/5.0",
+        "warnings": []
+      },
+      {
+        "agent_name": "breakout_strategy",
+        "signal": "HOLD",
+        "confidence": 0.2,
+        "reasoning": "No breakout setup \u2014 volume 0.4x, price at 100% of resistance. Waiting for setup.",
+        "warnings": [
+          "Price near resistance but volume only 0.4x \u2014 low conviction, likely false breakout"
+        ]
+      }
+    ]
+  },
+  {
+    "symbol": "WIPRO.NS",
+    "timestamp": "2026-04-28T00:46:52.157235",
+    "scanner_reasoning": {
+      "signals": [],
+      "reasoning": "Initial screening based on technical indicators",
+      "indicators": {
+        "rsi": 52.83951526883089,
+        "macd": 0.6824493269240577,
+        "volume_ratio": 1.4884670384065612
+      }
+    },
+    "technical_analysis": {
+      "detailed_analysis": "FINAL DECISION: HOLD (confidence: 45%, agent agreement: 67%) [Overridden to HOLD: confidence=0.45 < min=0.6]\n\nAGENT BREAKDOWN:\n  \u2713 TECHNICAL_ANALYSIS: BUY (50%) \u2014 Bullish oscillator signal. RSI=52.8 (above midpoint, mild bull bias); MACD (0.68) above signal (0.36) \u2014 bullish. Score: ...\n  \u2717 MOMENTUM_STRATEGY: SELL (66%) \u2014 Bearish momentum signal. EMA20 (201.7) below EMA50 (205.6) \u2014 bearish cross; ADX=28.1 (developing trend). Score: 3.3/5.0...\n  \u2713 BREAKOUT_STRATEGY: BUY (50%) \u2014 Bullish breakout signal. Volume 1.5x average (moderate interest); Price (nan) at resistance (nan) \u2014 breakout imminent. S...",
+      "patterns": [],
+      "support_levels": [],
+      "resistance_levels": [],
+      "confidence": 0.45
+    },
+    "risk_assessment": {
+      "position_size_pct": 0.03,
+      "position_size_rupees": 15000,
+      "risk_per_trade": 0.015,
+      "reward_risk_ratio": 2.0,
+      "validation_checks": [
+        {
+          "rule": "Max position size (5% of portfolio)",
+          "passed": true,
+          "status": "3.0% is within 5% limit"
+        },
+        {
+          "rule": "Max risk per trade (2% of portfolio)",
+          "passed": true,
+          "status": "1.5% is within 2% limit"
+        },
+        {
+          "rule": "Portfolio constraints",
+          "passed": true,
+          "status": "All risk limits respected"
+        }
+      ],
+      "portfolio_value": 500000,
+      "entry_price": 0.0,
+      "stop_loss": 0.0,
+      "risk_per_share": 0.0,
+      "quantity": 0
+    },
+    "agent_coordination": [
+      {
+        "from_agent": "Scanner Agent",
+        "to_agent": "Orchestrator",
+        "message": "Found WIPRO.NS as potential candidate",
+        "timestamp": "2026-04-28T00:46:52.157235"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Technical Agent",
+        "message": "Requesting deep technical analysis",
+        "timestamp": "2026-04-28T00:46:52.157235"
+      },
+      {
+        "from_agent": "Technical Agent",
+        "to_agent": "Orchestrator",
+        "message": "Analysis complete",
+        "timestamp": "2026-04-28T00:46:52.157235"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Momentum Agent",
+        "message": "Requesting momentum analysis",
+        "timestamp": "2026-04-28T00:46:52.157235"
+      },
+      {
+        "from_agent": "Momentum Agent",
+        "to_agent": "Orchestrator",
+        "message": "Momentum analysis complete",
+        "timestamp": "2026-04-28T00:46:52.157235"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Breakout Agent",
+        "message": "Requesting breakout analysis",
+        "timestamp": "2026-04-28T00:46:52.157235"
+      },
+      {
+        "from_agent": "Breakout Agent",
+        "to_agent": "Orchestrator",
+        "message": "Breakout analysis complete",
+        "timestamp": "2026-04-28T00:46:52.157235"
+      },
+      {
+        "from_agent": "Orchestrator",
+        "to_agent": "Aggregator",
+        "message": "Aggregating all agent signals",
+        "timestamp": "2026-04-28T00:46:52.157235"
+      }
+    ],
+    "orchestrator_reasoning": "FINAL DECISION: HOLD (confidence: 45%, agent agreement: 67%) [Overridden to HOLD: confidence=0.45 < min=0.6]\n\nAGENT BREAKDOWN:\n  \u2713 TECHNICAL_ANALYSIS: BUY (50%) \u2014 Bullish oscillator signal. RSI=52.8 (above midpoint, mild bull bias); MACD (0.68) above signal (0.36) \u2014 bullish. Score: ...\n  \u2717 MOMENTUM_STRATEGY: SELL (66%) \u2014 Bearish momentum signal. EMA20 (201.7) below EMA50 (205.6) \u2014 bearish cross; ADX=28.1 (developing trend). Score: 3.3/5.0...\n  \u2713 BREAKOUT_STRATEGY: BUY (50%) \u2014 Bullish breakout signal. Volume 1.5x average (moderate interest); Price (nan) at resistance (nan) \u2014 breakout imminent. S...",
+    "final_decision": "HOLD",
+    "confidence_score": 0.45,
+    "agent_agreement": 0.6666666666666666,
+    "errors": [],
+    "agent_analyses": [
+      {
+        "agent_name": "technical_analysis",
+        "signal": "BUY",
+        "confidence": 0.5,
+        "reasoning": "Bullish oscillator signal. RSI=52.8 (above midpoint, mild bull bias); MACD (0.68) above signal (0.36) \u2014 bullish. Score: 2.0/4.0",
+        "warnings": []
+      },
+      {
+        "agent_name": "momentum_strategy",
+        "signal": "SELL",
+        "confidence": 0.658,
+        "reasoning": "Bearish momentum signal. EMA20 (201.7) below EMA50 (205.6) \u2014 bearish cross; ADX=28.1 (developing trend). Score: 3.3/5.0",
+        "warnings": []
+      },
+      {
+        "agent_name": "breakout_strategy",
+        "signal": "BUY",
+        "confidence": 0.5,
+        "reasoning": "Bullish breakout signal. Volume 1.5x average (moderate interest); Price (nan) at resistance (nan) \u2014 breakout imminent. Score: 2.5/5.0",
+        "warnings": []
+      }
+    ]
+  }
+]
