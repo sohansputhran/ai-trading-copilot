@@ -98,38 +98,176 @@ def render_agent_card(analysis, col):
             col.warning(f"⚠️ {w}")
 
 def render_multi_agent_tab(multi_result: dict):
+    """Display multi-agent analysis in card-based layout with colored backgrounds."""
+    import re
+    
     if multi_result is None:
         st.info("Multi-agent analysis unavailable - LangGraph not installed.")
         return
+    
     final_signal     = multi_result.get("final_signal")
     final_confidence = multi_result.get("final_confidence", 0)
     agent_agreement  = multi_result.get("agent_agreement", 0)
     final_reasoning  = multi_result.get("final_reasoning", "")
     errors           = multi_result.get("errors", [])
     signal_str = final_signal.value if hasattr(final_signal, "value") else str(final_signal)
-
-    if signal_str == "BUY":
-        st.success(f"### {signal_badge(signal_str)} - {final_confidence:.0%} confidence")
-    elif signal_str == "SELL":
-        st.error(f"### {signal_badge(signal_str)} - {final_confidence:.0%} confidence")
+    
+    # ========================================================================
+    # FINAL DECISION SECTION
+    # ========================================================================
+    st.markdown("## 🤖 Multi-Agent Analysis")
+    st.markdown("### Final Decision")
+    
+    # Decision card colors
+    decision_colors = {
+        'BUY': '#d4edda',   # Light green
+        'SELL': '#f8d7da',  # Light red
+        'HOLD': '#fff3cd'   # Light yellow
+    }
+    decision_icons = {
+        'BUY': '🟢',
+        'SELL': '🔴',
+        'HOLD': '🟡'
+    }
+    
+    bg_color = decision_colors.get(signal_str, '#f8f9fa')
+    icon = decision_icons.get(signal_str, '⚪')
+    
+    # Display final decision with metrics
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
+    with col1:
+        st.markdown(f"""
+        <div style="background-color: {bg_color}; padding: 20px; border-radius: 10px; height: 120px;">
+            <h2 style="margin: 0;">{icon} {signal_str}</h2>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("**Confidence**")
+        st.markdown(f"### {final_confidence:.0%}")
+    
+    with col3:
+        st.markdown("**Agent Agreement**")
+        st.markdown(f"### {agent_agreement:.0%}")
+        if agent_agreement < 70:
+            st.caption("↕️ split — low conviction")
+        elif agent_agreement < 90:
+            st.caption("→ moderate conviction")
+        else:
+            st.caption("✓ high conviction")
+    
+    st.markdown("---")
+    
+    # ========================================================================
+    # AGENT BREAKDOWN SECTION (Card-based display)
+    # ========================================================================
+    st.markdown("### Agent Breakdown")
+    
+    # Parse individual agents from final_reasoning
+    agents_data = {}
+    
+    # Pattern to extract agent data
+    agent_patterns = {
+        'technical_analysis': (
+            r'TECHNICAL_ANALYSIS:\s*(BUY|SELL|HOLD)\s*\((\d+)%\)\s*—\s*([^✓]+)',
+            'Technical Analysis',
+            '#f8d7da'  # Light red/pink
+        ),
+        'momentum_strategy': (
+            r'MOMENTUM_STRATEGY:\s*(BUY|SELL|HOLD)\s*\((\d+)%\)\s*—\s*([^✓]+)',
+            'Momentum Strategy',
+            '#d4edda'  # Light green
+        ),
+        'breakout_strategy': (
+            r'BREAKOUT_STRATEGY:\s*(BUY|SELL|HOLD)\s*\((\d+)%\)\s*—\s*([^✓]+)',
+            'Breakout Strategy',
+            '#d1ecf1'  # Light blue
+        )
+    }
+    
+    # Extract data for each agent
+    for agent_key, (pattern, name, color) in agent_patterns.items():
+        match = re.search(pattern, final_reasoning)
+        if match:
+            agents_data[agent_key] = {
+                'name': name,
+                'signal': match.group(1),
+                'confidence': int(match.group(2)),
+                'reasoning': match.group(3).strip().replace('...', ''),
+                'color': color
+            }
+    
+    # Display agent cards in columns
+    if agents_data:
+        cols = st.columns(3)
+        
+        for idx, (agent_key, agent_data) in enumerate(agents_data.items()):
+            with cols[idx]:
+                # Card header with colored background
+                st.markdown(f"""
+                <div style="background-color: {agent_data['color']}; padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+                    <h4 style="margin-top: 0; color: #333;">{agent_data['name']}</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Signal with colored dot
+                signal_colors = {
+                    'BUY': '#28a745',   # Green
+                    'SELL': '#dc3545',  # Red
+                    'HOLD': '#ffc107'   # Yellow
+                }
+                signal_color = signal_colors.get(agent_data['signal'], '#6c757d')
+                
+                st.markdown(f"""
+                <div style="margin: 10px 0;">
+                    <span style="color: #666;">Signal:</span> 
+                    <span style="color: {signal_color}; font-size: 20px;">●</span> 
+                    <strong>{agent_data['signal']}</strong>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Confidence bar
+                st.markdown(f"**Confidence:** {agent_data['confidence']}%")
+                st.progress(agent_data['confidence'] / 100.0)
+                
+                # Reasoning text
+                reasoning_full = agent_data.get('reasoning', 'No reasoning provided')
+                # Split reasoning on semicolons for bullet points
+                if ';' in reasoning_full:
+                    points = [p.strip() for p in reasoning_full.split(';') if p.strip()]
+                    for point in points:
+                        st.markdown(f"• {point}")
+                else:
+                    st.markdown(reasoning_full)
+                
+                # Check for warnings in reasoning
+                reasoning_lower = agent_data['reasoning'].lower()
+                if 'rsi' in reasoning_lower and 'very high' in reasoning_lower:
+                    # Extract RSI value if present
+                    rsi_match = re.search(r'RSI[=\s]+(\d+\.?\d*)', agent_data['reasoning'])
+                    if rsi_match:
+                        st.warning(f"RSI={rsi_match.group(1)} is very high — trend may be overextended, reversal risk elevated", icon="⚠️")
+                    else:
+                        st.warning("RSI very high — reversal risk elevated", icon="⚠️")
+                
+                if 'smaller than atr' in reasoning_lower or 'may be noise' in reasoning_lower:
+                    st.warning("Price move smaller than ATR — may be noise", icon="⚠️")
+    
+    # Fallback to old display if pattern matching fails
     else:
-        st.warning(f"### {signal_badge(signal_str)} - {final_confidence:.0%} confidence")
-
-    st.markdown(f"**Agent Agreement:** {agent_agreement:.0%} of agents agree")
-    st.markdown(f"**Final Reasoning:** {final_reasoning}")
-
+        analyses = multi_result.get("agent_analyses", [])
+        if analyses:
+            cols = st.columns(min(len(analyses), 3))
+            for i, analysis in enumerate(analyses):
+                render_agent_card(analysis, cols[i % len(cols)])
+    
+    # Show errors if any
     if errors:
+        st.markdown("---")
         with st.expander("⚠️ Errors", expanded=False):
             for err in errors:
                 st.error(err)
-
-    analyses = multi_result.get("agent_analyses", [])
-    if analyses:
-        st.markdown("---")
-        st.markdown("#### Individual Agent Analyses")
-        cols = st.columns(min(len(analyses), 3))
-        for i, analysis in enumerate(analyses):
-            render_agent_card(analysis, cols[i % len(cols)])
 
 def make_price_chart(symbol: str, data: dict) -> go.Figure:
     import pandas as pd
