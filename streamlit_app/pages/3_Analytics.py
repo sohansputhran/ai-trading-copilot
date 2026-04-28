@@ -328,7 +328,7 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 🚀 Quick Actions")
 
 if st.sidebar.button("🔍 Back to Scanner", width='stretch'):
-    st.switch_page("app.py")
+    st.switch_page("Home.py")
 
 if st.sidebar.button("💼 View Portfolio", width='stretch'):
     st.switch_page("pages/2_Portfolio.py")

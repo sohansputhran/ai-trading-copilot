@@ -1052,7 +1052,7 @@ if demo_mode:
     ```bash
     git clone https://github.com/sohansputhran/ai-trading-copilot.git
     # Add HUGGINGFACE_API_TOKEN=hf_... to .env
-    streamlit run streamlit_app/app.py
+    streamlit run streamlit_app/Home.py
     ```
     
     [📖 Architecture Docs](https://github.com/sohansputhran/ai-trading-copilot#architecture) |

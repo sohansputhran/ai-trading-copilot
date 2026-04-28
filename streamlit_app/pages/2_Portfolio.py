@@ -473,7 +473,7 @@ if st.sidebar.button("📊 View Analytics", width="stretch"):
     st.switch_page("pages/3_analytics.py")
 
 if st.sidebar.button("🔍 Back to Scanner", width="stretch"):
-    st.switch_page("app.py")
+    st.switch_page("Home.py")
 
 st.sidebar.markdown("---")
 
@@ -509,7 +509,7 @@ if not open_positions:
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.page_link("app.py", label="🔍 Scanner", icon="📊")
+        st.page_link("Home.py", label="🔍 Scanner", icon="📊")
         st.caption("Find new trading opportunities")
     with col2:
         st.page_link("pages/3_analytics.py", label="📈 Analytics", icon="📉")
@@ -811,7 +811,7 @@ st.markdown("## 🚀 Quick Actions")
 action_col1, action_col2, action_col3 = st.columns(3)
 
 with action_col1:
-    st.page_link("app.py", label="🔍 Scanner", icon="📊")
+    st.page_link("Home.py", label="🔍 Scanner", icon="📊")
     st.caption("Find new trading opportunities")
 
 with action_col2:
