@@ -227,10 +227,9 @@ if st.session_state['demo_mode']:
     
     **To run live:** Add your HuggingFace API token in the sidebar and disable demo mode.
     
-    [📹 Watch Full Demo](https://github.com/sohansputhran/ai-trading-copilot#demo) | 
     [💻 View Source Code](https://github.com/sohansputhran/ai-trading-copilot)
     """)
-
+# [📹 Watch Full Demo](https://github.com/sohansputhran/ai-trading-copilot#demo) |
 st.title("🤖 AI Trading Copilot")
 st.markdown(f"**Scanner Type:** {SCANNER_TYPE} | **Multi-Agent:** {'✅' if MULTI_AGENT_AVAILABLE else '❌'} | **Paper Trading:** {'✅' if PAPER_TRADING_AVAILABLE else '❌'}")
 
