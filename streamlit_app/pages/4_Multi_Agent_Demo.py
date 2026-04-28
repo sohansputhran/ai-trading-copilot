@@ -337,7 +337,170 @@ if 'current_analysis' in st.session_state:
             or result.get('orchestrator_reasoning')
             or 'No reasoning provided'
         )
-        st.markdown(reasoning)
+        
+        # Parse and clean the reasoning
+        if 'FINAL DECISION:' in reasoning or 'AGENT BREAKDOWN:' in reasoning:
+            lines = reasoning.split('\n')
+            
+            # Extract final decision summary
+            final_decision_line = [l for l in lines if 'FINAL DECISION:' in l]
+            agent_breakdown_start = next((i for i, l in enumerate(lines) if 'AGENT BREAKDOWN:' in l), None)
+            warnings_start = next((i for i, l in enumerate(lines) if 'WARNINGS:' in l), None)
+            
+            # Display cleaned final decision
+            if final_decision_line:
+                decision_text = final_decision_line[0].replace('FINAL DECISION:', '').strip()
+                # Remove the [Overridden...] part if present
+                if '[Overridden' in decision_text:
+                    decision_text = decision_text.split('[Overridden')[0].strip()
+                st.info(f"**Decision Summary:** {decision_text}")
+            
+            # Display individual agent breakdowns in expandable sections
+            if agent_breakdown_start:
+                st.markdown("---")
+                st.markdown("#### 🤖 Individual Agent Contributions")
+                
+                # Try to get full reasoning from agent_analyses first (more complete)
+                agent_analyses_data = result.get('agent_analyses', [])
+                
+                if agent_analyses_data:
+                    # We have structured agent data - use that instead
+                    for agent_data in agent_analyses_data:
+                        agent_name = agent_data.get('agent_name', 'Unknown').replace('_', ' ').title()
+                        signal = agent_data.get('signal', 'UNKNOWN')
+                        confidence = agent_data.get('confidence', 0)
+                        reasoning_full = agent_data.get('reasoning', 'No reasoning provided')
+                        
+                        # Determine icon
+                        if 'technical' in agent_name.lower():
+                            icon = '📊'
+                        elif 'momentum' in agent_name.lower():
+                            icon = '📈'
+                        elif 'breakout' in agent_name.lower():
+                            icon = '🚀'
+                        else:
+                            icon = '🤖'
+                        
+                        # Color based on signal
+                        if signal == 'BUY':
+                            title = f"{icon} **{agent_name}**: 🟢 {signal} ({confidence:.0%})"
+                        elif signal == 'SELL':
+                            title = f"{icon} **{agent_name}**: 🔴 {signal} ({confidence:.0%})"
+                        else:
+                            title = f"{icon} **{agent_name}**: 🟡 {signal} ({confidence:.0%})"
+                        
+                        with st.expander(title, expanded=False):
+                            # Split reasoning on semicolons for bullet points
+                            if ';' in reasoning_full:
+                                points = [p.strip() for p in reasoning_full.split(';') if p.strip()]
+                                for point in points:
+                                    st.markdown(f"• {point}")
+                            else:
+                                st.markdown(reasoning_full)
+                else:
+                    # Fallback to parsing from orchestrator_reasoning text
+                    # Find all agent sections
+                    agent_sections = []
+                    current_agent = None
+                    
+                    for i in range(agent_breakdown_start + 1, len(lines)):
+                        line = lines[i].strip()
+                        
+                        # Check for agent headers
+                        if line.startswith('✓ TECHNICAL_ANALYSIS:') or line.startswith('✗ TECHNICAL_ANALYSIS:'):
+                            if current_agent:
+                                agent_sections.append(current_agent)
+                            current_agent = {'name': 'Technical Analysis', 'lines': [line], 'icon': '📊'}
+                        elif line.startswith('✓ MOMENTUM_STRATEGY:') or line.startswith('✗ MOMENTUM_STRATEGY:'):
+                            if current_agent:
+                                agent_sections.append(current_agent)
+                            current_agent = {'name': 'Momentum Strategy', 'lines': [line], 'icon': '📈'}
+                        elif line.startswith('✓ BREAKOUT_STRATEGY:') or line.startswith('✗ BREAKOUT_STRATEGY:'):
+                            if current_agent:
+                                agent_sections.append(current_agent)
+                            current_agent = {'name': 'Breakout Strategy', 'lines': [line], 'icon': '🚀'}
+                        elif current_agent and line and not line.startswith('WARNINGS:'):
+                            current_agent['lines'].append(line)
+                        elif line.startswith('WARNINGS:'):
+                            if current_agent:
+                                agent_sections.append(current_agent)
+                            break
+                    
+                    # Add last agent if exists
+                    if current_agent and current_agent not in agent_sections:
+                        agent_sections.append(current_agent)
+                    
+                    # Display each agent in an expander (fallback path)
+                    for agent in agent_sections:
+                        header = agent['lines'][0]
+                        
+                        # Extract signal and confidence from header
+                        if ':' in header:
+                            header_parts = header.split(':', 1)[1].strip()
+                            signal = header_parts.split('(')[0].strip() if '(' in header_parts else header_parts
+                            confidence = header_parts.split('(')[1].split(')')[0] if '(' in header_parts else 'N/A'
+                        else:
+                            signal = 'UNKNOWN'
+                            confidence = 'N/A'
+                        
+                        # Color based on signal
+                        if 'BUY' in signal:
+                            title = f"{agent['icon']} **{agent['name']}**: 🟢 {signal} ({confidence})"
+                        elif 'SELL' in signal:
+                            title = f"{agent['icon']} **{agent['name']}**: 🔴 {signal} ({confidence})"
+                        else:
+                            title = f"{agent['icon']} **{agent['name']}**: 🟡 {signal} ({confidence})"
+                        
+                        with st.expander(title, expanded=False):
+                            # Check if we have multiple lines (reasoning split across lines)
+                            if len(agent['lines']) > 1:
+                                # Display each line as a bullet
+                                for line in agent['lines'][1:]:
+                                    clean_line = line.replace('—', '').replace('✓', '').replace('✗', '').strip()
+                                    if clean_line:
+                                        st.markdown(f"• {clean_line}")
+                            else:
+                                # Single line - extract reasoning from after the percentage
+                                full_text = agent['lines'][0]
+                                
+                                # Find the end of the confidence percentage: "BUY (50%)"
+                                if ')' in full_text:
+                                    # Split after the closing parenthesis
+                                    parts = full_text.split(')', 1)
+                                    if len(parts) > 1:
+                                        reasoning_text = parts[1].strip()
+                                        
+                                        # Remove leading separator if present
+                                        if reasoning_text.startswith('—'):
+                                            reasoning_text = reasoning_text[1:].strip()
+                                        
+                                        # Split on semicolons to create bullet points
+                                        if ';' in reasoning_text:
+                                            points = [p.strip() for p in reasoning_text.split(';') if p.strip()]
+                                            for point in points:
+                                                st.markdown(f"• {point}")
+                                        elif reasoning_text:
+                                            # No semicolons, show as single bullet
+                                            st.markdown(f"• {reasoning_text}")
+                                        else:
+                                            st.caption("_No detailed reasoning provided_")
+                                    else:
+                                        st.caption("_No detailed reasoning provided_")
+                                else:
+                                    st.caption("_No detailed reasoning provided_")
+            
+            # Display warnings if present
+            if warnings_start:
+                st.markdown("---")
+                st.markdown("#### ⚠️ Important Warnings")
+                warning_lines = [l.strip() for l in lines[warnings_start+1:] if l.strip()]
+                for warning in warning_lines:
+                    clean_warning = warning.replace('⚠', '').replace('[breakout_strategy]', '').replace('[technical_analysis]', '').replace('[momentum_strategy]', '').strip()
+                    if clean_warning:
+                        st.warning(f"⚠️ {clean_warning}")
+        else:
+            # Simple reasoning - display as-is
+            st.markdown(reasoning)
         
         if errors:
             with st.expander("⚠️ View Errors", expanded=False):
