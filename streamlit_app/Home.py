@@ -242,27 +242,32 @@ def render_multi_agent_tab(multi_result: dict):
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Confidence with custom progress bar (matching screenshot style)
-                st.markdown(f"**Confidence:**")
+                # Segmented block confidence bar (matches screenshot design)
+                bar_color = {
+                    'BUY': '#28a745',
+                    'SELL': '#dc3545',
+                    'HOLD': '#ffc107'
+                }.get(agent_data['signal'], '#6c757d')
                 
-                # Custom progress bar
-                filled_width = agent_data['confidence']
-                empty_width = 100 - filled_width
+                total_segments = 10
+                filled_segments = round(agent_data['confidence'] / 10)
                 
-                # Color for progress bar based on signal
-                progress_colors = {
-                    'BUY': '#28a745',   # Green
-                    'SELL': '#dc3545',  # Red
-                    'HOLD': '#ffc107'   # Yellow
-                }
-                bar_color = progress_colors.get(agent_data['signal'], '#6c757d')
+                segments_html = "".join([
+                    f'<div style="flex:1; height:12px; background-color:{bar_color}; border-radius:3px;"></div>'
+                    if i < filled_segments else
+                    f'<div style="flex:1; height:12px; background-color:#d0d0d0; border-radius:3px;"></div>'
+                    for i in range(total_segments)
+                ])
                 
                 st.markdown(f"""
-                <div style="display: flex; align-items: center; margin: 5px 0 0 0;">
-                    <div style="flex-grow: 1; height: 8px; background-color: #e9ecef; border-radius: 4px; overflow: hidden; margin-right: 10px;">
-                        <div style="width: {filled_width}%; height: 100%; background-color: {bar_color};"></div>
+                <div style="margin: 6px 0 14px 0;">
+                    <span style="color:#555; font-size:14px; font-weight:500;">Confidence:</span>
+                    <div style="display:flex; align-items:center; gap:8px; margin-top:5px;">
+                        <div style="display:flex; gap:3px; flex:1;">
+                            {segments_html}
+                        </div>
+                        <span style="font-size:14px; font-weight:600; color:#333; min-width:38px; text-align:right;">{agent_data['confidence']}%</span>
                     </div>
-                    <span style="font-size: 14px; color: #333; min-width: 40px;">{agent_data['confidence']}%</span>
                 </div>
                 """, unsafe_allow_html=True)
                 
