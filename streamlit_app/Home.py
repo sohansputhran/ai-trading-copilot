@@ -160,42 +160,57 @@ def render_multi_agent_tab(multi_result: dict):
     st.markdown("---")
     
     # ========================================================================
-    # AGENT BREAKDOWN SECTION (Card-based display)
+    # AGENT BREAKDOWN SECTION (Card-based display with signal-based colors)
     # ========================================================================
     st.markdown("### Agent Breakdown")
     
     # Parse individual agents from final_reasoning
     agents_data = {}
     
-    # Pattern to extract agent data
-    agent_patterns = {
-        'technical_analysis': (
-            r'TECHNICAL_ANALYSIS:\s*(BUY|SELL|HOLD)\s*\((\d+)%\)\s*—\s*([^✓]+)',
-            'Technical Analysis',
-            '#f8d7da'  # Light red/pink
-        ),
-        'momentum_strategy': (
-            r'MOMENTUM_STRATEGY:\s*(BUY|SELL|HOLD)\s*\((\d+)%\)\s*—\s*([^✓]+)',
-            'Momentum Strategy',
-            '#d4edda'  # Light green
-        ),
-        'breakout_strategy': (
-            r'BREAKOUT_STRATEGY:\s*(BUY|SELL|HOLD)\s*\((\d+)%\)\s*—\s*([^✓]+)',
-            'Breakout Strategy',
-            '#d1ecf1'  # Light blue
-        )
+    # Pattern to extract agent data - improved to capture full reasoning
+    # Split the reasoning by agent markers first for better extraction
+    agent_sections = {}
+    
+    # Find all agent sections
+    technical_match = re.search(r'TECHNICAL_ANALYSIS:\s*(BUY|SELL|HOLD)\s*\((\d+)%\)\s*—\s*(.+?)(?=MOMENTUM_STRATEGY:|$)', final_reasoning, re.DOTALL)
+    momentum_match = re.search(r'MOMENTUM_STRATEGY:\s*(BUY|SELL|HOLD)\s*\((\d+)%\)\s*—\s*(.+?)(?=BREAKOUT_STRATEGY:|$)', final_reasoning, re.DOTALL)
+    breakout_match = re.search(r'BREAKOUT_STRATEGY:\s*(BUY|SELL|HOLD)\s*\((\d+)%\)\s*—\s*(.+?)(?=\n\n|$)', final_reasoning, re.DOTALL)
+    
+    agent_matches = {
+        'technical_analysis': (technical_match, 'Technical Analysis'),
+        'momentum_strategy': (momentum_match, 'Momentum Strategy'),
+        'breakout_strategy': (breakout_match, 'Breakout Strategy')
+    }
+    
+    # Signal-based colors (changes based on BUY/SELL/HOLD)
+    signal_bg_colors = {
+        'BUY': '#d4edda',   # Light green
+        'SELL': '#f8d7da',  # Light red
+        'HOLD': '#fff3cd'   # Light yellow
     }
     
     # Extract data for each agent
-    for agent_key, (pattern, name, color) in agent_patterns.items():
-        match = re.search(pattern, final_reasoning)
+    for agent_key, (match, name) in agent_matches.items():
         if match:
+            signal = match.group(1)
+            confidence = int(match.group(2))
+            reasoning = match.group(3).strip()
+            
+            # Clean up reasoning - remove checkmarks and extra text
+            reasoning = reasoning.replace('✓', '').strip()
+            # Remove trailing partial text from next agent
+            reasoning = re.sub(r'\s*TECHNICAL_ANALYSIS:.*$', '', reasoning, flags=re.DOTALL)
+            reasoning = re.sub(r'\s*MOMENTUM_STRATEGY:.*$', '', reasoning, flags=re.DOTALL)
+            reasoning = re.sub(r'\s*BREAKOUT_STRATEGY:.*$', '', reasoning, flags=re.DOTALL)
+            # Remove "..." artifacts
+            reasoning = reasoning.replace('...', '').strip()
+            
             agents_data[agent_key] = {
                 'name': name,
-                'signal': match.group(1),
-                'confidence': int(match.group(2)),
-                'reasoning': match.group(3).strip().replace('...', ''),
-                'color': color
+                'signal': signal,
+                'confidence': confidence,
+                'reasoning': reasoning,
+                'color': signal_bg_colors.get(signal, '#f8f9fa')  # Color based on signal!
             }
     
     # Display agent cards in columns
@@ -227,9 +242,29 @@ def render_multi_agent_tab(multi_result: dict):
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Confidence bar
-                st.markdown(f"**Confidence:** {agent_data['confidence']}%")
-                st.progress(agent_data['confidence'] / 100.0)
+                # Confidence with custom progress bar (matching screenshot style)
+                st.markdown(f"**Confidence:**")
+                
+                # Custom progress bar
+                filled_width = agent_data['confidence']
+                empty_width = 100 - filled_width
+                
+                # Color for progress bar based on signal
+                progress_colors = {
+                    'BUY': '#28a745',   # Green
+                    'SELL': '#dc3545',  # Red
+                    'HOLD': '#ffc107'   # Yellow
+                }
+                bar_color = progress_colors.get(agent_data['signal'], '#6c757d')
+                
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; margin: 5px 0 0 0;">
+                    <div style="flex-grow: 1; height: 8px; background-color: #e9ecef; border-radius: 4px; overflow: hidden; margin-right: 10px;">
+                        <div style="width: {filled_width}%; height: 100%; background-color: {bar_color};"></div>
+                    </div>
+                    <span style="font-size: 14px; color: #333; min-width: 40px;">{agent_data['confidence']}%</span>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 # Reasoning text
                 reasoning_full = agent_data.get('reasoning', 'No reasoning provided')
