@@ -462,21 +462,6 @@ st.sidebar.markdown(
 
 st.sidebar.markdown("---")
 
-# Quick actions in sidebar
-st.sidebar.markdown("### 🚀 Quick Actions")
-
-if not IS_CLOUD_DEPLOYMENT:
-    if st.sidebar.button("🔄 Refresh All Prices", width="stretch"):
-        st.rerun()
-
-if st.sidebar.button("📊 View Analytics", width="stretch"):
-    st.switch_page("pages/3_analytics.py")
-
-if st.sidebar.button("🔍 Back to Scanner", width="stretch"):
-    st.switch_page("Home.py")
-
-st.sidebar.markdown("---")
-
 # Portfolio insights in sidebar
 st.sidebar.markdown("### 💡 Insights")
 
@@ -496,6 +481,23 @@ if open_positions:
         if risk_utilization > 0.4:
             st.sidebar.warning("⚠️ High capital deployment")
             st.sidebar.caption(f"{risk_utilization:.0%} of portfolio deployed")
+
+# Quick Actions in Sidebar
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🧭 Quick Actions")
+
+if not IS_CLOUD_DEPLOYMENT:
+    if st.sidebar.button("🔄 Refresh All Prices", width="stretch"):
+        st.rerun()
+
+if st.sidebar.button("🔍 Back to Scanner", width="stretch"):
+    st.switch_page("Home.py")
+
+if st.sidebar.button("📈 Advanced Analytics", width="stretch"):
+    st.switch_page("pages/3_Advanced_Analytics.py")
+
+if st.sidebar.button("🤖 Multi-Agent Reasoning", width="stretch"):
+    st.switch_page("pages/4_Multi_Agent_Reasoning.py")
 
 # ============================================================================
 # MAIN CONTENT

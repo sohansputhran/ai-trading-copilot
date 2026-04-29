@@ -524,25 +524,18 @@ with st.sidebar:
     if run_scanner:
         st.session_state["scan_triggered"] = True
     
-    # Quick navigation
+    # Quick Actions
     st.markdown("---")
-    st.markdown("### 🧭 Quick Navigation")
+    st.markdown("### 🧭 Quick Actions")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🤖 Multi-Agent", width='stretch'):
-            st.switch_page("pages/2_🤖_Multi_Agent_Demo.py")
-    with col2:
-        if st.button("💼 Portfolio", width='stretch'):
-            st.switch_page("pages/3_💼_Portfolio.py")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("📈 Analytics", width='stretch'):
-            st.switch_page("pages/4_📈_Analytics.py")
-    with col2:
-        pass  # Reserved for future pages
+    if st.button("💼 Portfolio Performance", width='stretch'):
+        st.switch_page("pages/2_Portfolio_Performance.py")
 
+    if st.button("📈 Advanced Analytics", width='stretch'):
+        st.switch_page("pages/3_Advanced_Analytics.py")
+
+    if st.button("🤖 Multi-Agent Reasoning", width='stretch'):
+        st.switch_page("pages/4_Multi_Agent_Reasoning.py")
 # ============================================================================
 # MAIN CONTENT
 # ============================================================================

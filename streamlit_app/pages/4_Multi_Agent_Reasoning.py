@@ -63,6 +63,31 @@ else:
 st.markdown("---")
 
 # ============================================================================
+# SIDEBAR
+# ============================================================================
+
+with st.sidebar:
+    st.header("🔧 Configuration")
+        
+    if demo_mode:
+        st.info("📀 **Demo Mode**\n\nUsing pre-recorded data (no API costs)")
+    else:
+        st.success("🔴 **Live Mode**\n\nUsing real-time API calls")
+
+    # Quick Actions in Sidebar
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🧭 Quick Actions")
+
+    if st.sidebar.button("🔍 Back to Scanner", width="stretch"):
+        st.switch_page("Home.py")
+
+    if st.sidebar.button("💼 Portfolio Performance", width='stretch'):
+        st.switch_page("pages/2_Portfolio_Performance.py")
+
+    if st.sidebar.button("📈 Advanced Analytics", width="stretch"):
+        st.switch_page("pages/3_Advanced_Analytics.py")
+
+# ============================================================================
 # STOCK SELECTOR
 # ============================================================================
 

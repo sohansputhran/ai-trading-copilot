@@ -324,21 +324,6 @@ st.sidebar.markdown(
 
 st.sidebar.markdown("---")
 
-# Quick Actions
-st.sidebar.markdown("### 🚀 Quick Actions")
-
-if st.sidebar.button("🔍 Back to Scanner", width='stretch'):
-    st.switch_page("Home.py")
-
-if st.sidebar.button("💼 View Portfolio", width='stretch'):
-    st.switch_page("pages/2_Portfolio.py")
-
-if not IS_CLOUD_DEPLOYMENT:
-    if st.sidebar.button("🔄 Refresh Data", width='stretch'):
-        st.rerun()
-
-st.sidebar.markdown("---")
-
 # Trading Insights
 st.sidebar.markdown("### 💡 Trading Insights")
 
@@ -361,6 +346,19 @@ if metrics['profit_factor'] is not None:
         st.sidebar.info(f"✓ **Good PF**: {pf:.2f}")
     else:
         st.sidebar.warning(f"⚠️ **Needs Work**: PF {pf:.2f}")
+
+# Quick Actions in Sidebar
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🧭 Quick Actions")
+
+if st.sidebar.button("🔍 Back to Scanner", width="stretch"):
+    st.switch_page("Home.py")
+
+if st.sidebar.button("💼 Portfolio Performance", width='stretch'):
+    st.switch_page("pages/2_Portfolio_Performance.py")
+
+if st.sidebar.button("🤖 Multi-Agent Reasoning", width="stretch"):
+    st.switch_page("pages/4_Multi_Agent_Reasoning.py")
 
 # ============================================================================
 # TOP-LEVEL METRICS
