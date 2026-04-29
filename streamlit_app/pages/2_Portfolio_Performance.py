@@ -466,21 +466,55 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### 💡 Insights")
 
 if open_positions:
-    # Display insights
+    # Best performer - integrated display
     if best_performer:
-        st.sidebar.success(f"🏆 **Best**: {best_performer}")
-        st.sidebar.caption(f"₹{best_pnl:+,.0f}")
+        st.sidebar.markdown(
+            f"""
+            <div style="background-color: #d4edda; padding: 12px; border-radius: 8px; border-left: 4px solid #28a745; margin-bottom: 12px;">
+                <div style="color: #155724; font-weight: bold; margin-bottom: 4px;">
+                    🏆 Best: {best_performer}
+                </div>
+                <div style="color: #155724; font-size: 1.5em; font-weight: 600">
+                    ₹{best_pnl:+,.1f}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
     
+    # Worst performer - integrated display
     if worst_performer and worst_pnl < 0:
-        st.sidebar.error(f"⚠️ **Worst**: {worst_performer}")
-        st.sidebar.caption(f"₹{worst_pnl:+,.0f}")
+        st.sidebar.markdown(
+            f"""
+            <div style="background-color: #f8d7da; padding: 12px; border-radius: 8px; border-left: 4px solid #dc3545; margin-bottom: 12px;">
+                <div style="color: #721c24; font-weight: bold; margin-bottom: 4px;">
+                    ⚠️ Worst: {worst_performer}
+                </div>
+                <div style="color: #721c24; font-size: 1.5em; font-weight: 600">
+                    ₹{worst_pnl:+,.1f}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
     
-    # Risk warning
+    # Risk warning - integrated display
     if hasattr(snapshot, 'deployed_capital') and snapshot.portfolio_value > 0:
         risk_utilization = snapshot.deployed_capital / snapshot.portfolio_value
         if risk_utilization > 0.4:
-            st.sidebar.warning("⚠️ High capital deployment")
-            st.sidebar.caption(f"{risk_utilization:.0%} of portfolio deployed")
+            st.sidebar.markdown(
+                f"""
+                <div style="background-color: #fff3cd; padding: 12px; border-radius: 8px; border-left: 4px solid #ffc107;">
+                    <div style="color: #856404; font-weight: bold; margin-bottom: 4px;">
+                        ⚠️ High capital deployment
+                    </div>
+                    <div style="color: #856404; font-size: 1.5em; font-weight: 600">
+                        {risk_utilization:.0%} of portfolio deployed
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
 # Quick Actions in Sidebar
 st.sidebar.markdown("---")
